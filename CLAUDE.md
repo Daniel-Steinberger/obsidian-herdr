@@ -109,9 +109,10 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 ## Stand
 
 v0.4.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
-`f18eef1`, Release `a616aa6`; Senden via `pane.send_input`; Statusbar-Buttons).
-Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
-Statusbar-Leiste. Eigenes Git-Repo, Branch `main`, kein Remote.
+`f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
+Statusbar-Buttons `6acfadb`). Funktioniert live: Senden, Mapping, Auto-Abhaken,
+kontinuierlicher Modus, Statusbar-Leiste. Eigenes Git-Repo, Branch `main`, kein
+Remote.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
 Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren
