@@ -1,7 +1,7 @@
 {
   "id": "herdr-obsidian",
   "name": "Herdr Bridge",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "minAppVersion": "1.4.0",
   "description": "Schickt To-Dos aus Notizen-Checklisten an Agents im Herdr-Terminal-Multiplexer und hakt sie ab, wenn der Agent fertig ist.",
   "author": "Daniel Steinberger",

@@ -1,6 +1,7 @@
 import { App, Notice, TFile } from "obsidian";
 import { waitForStatus, WaitHandle } from "./agent-wait";
 import { markDone, parseTodos } from "./todos";
+import { t } from "./i18n";
 
 export interface TrackOptions {
   herdrPath: string;
@@ -100,7 +101,7 @@ export class CompletionTracker {
           resubmits++;
           try {
             await opts.resubmit!();
-            new Notice(`Kein Arbeitsbeginn -- Enter erneut gesendet (#${resubmits}).`);
+            new Notice(t("notice.resent", { n: resubmits }));
           } catch {
             /* Senden fehlgeschlagen -> weiter pruefen, naechster Versuch */
           }
@@ -109,7 +110,7 @@ export class CompletionTracker {
 
       if (!started) {
         this.entries.delete(paneId);
-        new Notice(`Auto-Abhaken: Arbeitsbeginn fuer "${entry.text}" nicht erkannt.`);
+        new Notice(t("notice.noWorkStart", { text: entry.text }));
         entry.onComplete?.(false);
         return;
       }
@@ -128,7 +129,7 @@ export class CompletionTracker {
     this.entries.delete(paneId);
 
     if (r2 !== "matched") {
-      new Notice(`Auto-Abhaken: Timeout beim Warten auf "${entry.text}".`);
+      new Notice(t("notice.idleTimeout", { text: entry.text }));
       entry.onComplete?.(false);
       return;
     }
@@ -143,7 +144,7 @@ export class CompletionTracker {
     const lineNo = this.locateLine(content, entry.lineNo, entry.text);
     if (lineNo == null) return; // schon abgehakt, verschoben oder entfernt
     await this.app.vault.modify(file, markDone(content, lineNo));
-    new Notice(`Abgehakt: "${entry.text}"`);
+    new Notice(t("notice.checked", { text: entry.text }));
   }
 
   /** Robuste Zeilensuche: bevorzugt gespeicherte Zeile, sonst nach Text. */

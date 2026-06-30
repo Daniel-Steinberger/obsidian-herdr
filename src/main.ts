@@ -12,6 +12,7 @@ import { HerdrClient, defaultSocketPath } from "./herdr-client";
 import { nextOpen, parseTodos } from "./todos";
 import { resolveWorkspace } from "./mapping";
 import { CompletionTracker } from "./tracker";
+import { t } from "./i18n";
 
 interface HerdrSettings {
   socketPath: string;
@@ -49,25 +50,25 @@ export default class HerdrPlugin extends Plugin {
 
     this.addCommand({
       id: "send-next-todo",
-      name: "Naechstes offenes To-Do an den Agent senden",
+      name: t("cmd.sendNext"),
       callback: () => this.sendNextTodo(),
     });
 
     this.addCommand({
       id: "start-continuous",
-      name: "Kontinuierlichen Modus fuer diese Notiz starten",
+      name: t("cmd.startContinuous"),
       callback: () => this.startContinuous(),
     });
 
     this.addCommand({
       id: "stop-continuous",
-      name: "Kontinuierlichen Modus stoppen",
+      name: t("cmd.stopContinuous"),
       callback: () => this.stopContinuous(),
     });
 
     this.addCommand({
       id: "ping",
-      name: "Verbindung zu Herdr testen (ping)",
+      name: t("cmd.ping"),
       callback: () => this.pingHerdr(),
     });
 
@@ -145,13 +146,15 @@ export default class HerdrPlugin extends Plugin {
     const running = this.continuous.has(file.path);
 
     const label = el.createSpan({ cls: "herdr-sb-label" });
-    label.setText(running ? `Herdr: laeuft (${openCount})` : `Herdr: ${openCount} offen`);
+    label.setText(
+      running ? t("sb.running", { count: openCount }) : t("sb.open", { count: openCount })
+    );
     if (running) label.addClass("herdr-active");
 
     // Button 1: einzelnen Schritt senden.
     const stepBtn = el.createSpan({ cls: "clickable-icon herdr-sb-btn" });
     setIcon(stepBtn, "play");
-    setTooltip(stepBtn, "Naechstes To-Do an den Agent senden");
+    setTooltip(stepBtn, t("sb.tip.step"));
     if (hasOpen) {
       stepBtn.onclick = () => void this.sendNextTodo();
     } else {
@@ -163,11 +166,11 @@ export default class HerdrPlugin extends Plugin {
     if (running) {
       setIcon(allBtn, "square");
       allBtn.addClass("herdr-active");
-      setTooltip(allBtn, "Kontinuierlichen Modus stoppen");
+      setTooltip(allBtn, t("sb.tip.stop"));
       allBtn.onclick = () => this.stopContinuous();
     } else {
       setIcon(allBtn, "chevrons-right");
-      setTooltip(allBtn, "Alle To-Dos kontinuierlich abarbeiten");
+      setTooltip(allBtn, t("sb.tip.all"));
       if (hasOpen) {
         allBtn.onclick = () => void this.startContinuous();
       } else {
@@ -179,9 +182,9 @@ export default class HerdrPlugin extends Plugin {
   async pingHerdr() {
     try {
       const pong = await this.client().ping();
-      new Notice(`Herdr OK: v${pong.version} (Protokoll ${pong.protocol})`);
+      new Notice(t("notice.herdrOk", { version: pong.version, protocol: pong.protocol }));
     } catch (e) {
-      new Notice(`Herdr nicht erreichbar: ${(e as Error).message}`);
+      new Notice(t("notice.herdrUnreachable", { error: (e as Error).message }));
     }
   }
 
@@ -189,7 +192,7 @@ export default class HerdrPlugin extends Plugin {
   async sendNextTodo() {
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new Notice("Keine aktive Notiz.");
+      new Notice(t("notice.noActiveNote"));
       return;
     }
     await this.doSend(file, false);
@@ -198,35 +201,35 @@ export default class HerdrPlugin extends Plugin {
   async startContinuous() {
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new Notice("Keine aktive Notiz.");
+      new Notice(t("notice.noActiveNote"));
       return;
     }
     if (!this.settings.submitWithEnter) {
-      new Notice("Kontinuierlicher Modus benoetigt 'Mit Enter abschicken'.");
+      new Notice(t("notice.continuousNeedsEnter"));
       return;
     }
     if (this.continuous.has(file.path)) {
-      new Notice(`Kontinuierlicher Modus laeuft bereits fuer "${file.basename}".`);
+      new Notice(t("notice.continuousAlreadyRunning", { name: file.basename }));
       return;
     }
     this.continuous.set(file.path, "");
     this.refreshStatusBar();
-    new Notice(`Kontinuierlicher Modus gestartet: "${file.basename}"`);
+    new Notice(t("notice.continuousStarted", { name: file.basename }));
     await this.doSend(file, true);
   }
 
   stopContinuous() {
     const file = this.app.workspace.getActiveFile();
     if (file && this.continuous.has(file.path)) {
-      this.endContinuous(file.path, `Kontinuierlicher Modus gestoppt: "${file.basename}"`);
+      this.endContinuous(file.path, t("notice.continuousStopped", { name: file.basename }));
       return;
     }
     // Fallback: nichts fuer die aktive Notiz -> alle laufenden stoppen.
     if (this.continuous.size > 0) {
       for (const path of [...this.continuous.keys()]) this.endContinuous(path);
-      new Notice("Alle kontinuierlichen Modi gestoppt.");
+      new Notice(t("notice.allContinuousStopped"));
     } else {
-      new Notice("Kein kontinuierlicher Modus aktiv.");
+      new Notice(t("notice.noContinuous"));
     }
   }
 
@@ -245,7 +248,7 @@ export default class HerdrPlugin extends Plugin {
   private async doSend(file: TFile, continuous: boolean) {
     if (!this.inHerdrFolder(file)) {
       new Notice(
-        `"${file.basename}" liegt nicht im Herdr-Ordner ("${this.settings.herdrFolder}").`
+        t("notice.notInFolder", { name: file.basename, folder: this.settings.herdrFolder })
       );
       if (continuous) this.endContinuous(file.path);
       return;
@@ -256,9 +259,9 @@ export default class HerdrPlugin extends Plugin {
     if (!todo) {
       if (continuous) {
         this.endContinuous(file.path);
-        new Notice(`Alle To-Dos erledigt -- kontinuierlicher Modus beendet: "${file.basename}"`);
+        new Notice(t("notice.allDoneContinuous", { name: file.basename }));
       } else {
-        new Notice("Alle To-Dos erledigt -- nichts zu senden.");
+        new Notice(t("notice.allDoneNothing"));
       }
       return;
     }
@@ -272,14 +275,16 @@ export default class HerdrPlugin extends Plugin {
 
       if (!ws) {
         new Notice(
-          `Kein Herdr-Workspace fuer "${explicit ?? file.basename}" gefunden. ` +
-            `Verfuegbar: ${workspaces.map((w) => w.label).join(", ")}`
+          t("notice.noWorkspace", {
+            name: explicit ?? file.basename,
+            available: workspaces.map((w) => w.label).join(", "),
+          })
         );
         if (continuous) this.endContinuous(file.path);
         return;
       }
       if (!ws.pane_id) {
-        new Notice(`Workspace "${ws.label}" hat keinen Agent/Pane.`);
+        new Notice(t("notice.noPane", { label: ws.label }));
         if (continuous) this.endContinuous(file.path);
         return;
       }
@@ -311,13 +316,17 @@ export default class HerdrPlugin extends Plugin {
           },
           continuous ? (marked) => this.onContinuousStep(file, marked) : undefined
         );
-        const tail = continuous ? " [kontinuierlich]" : " (wird abgehakt, wenn fertig)";
-        new Notice(`-> ${ws.label}: "${todo.text}"${tail}`);
+        new Notice(
+          t(continuous ? "notice.sentContinuous" : "notice.sentTracking", {
+            label: ws.label,
+            text: todo.text,
+          })
+        );
       } else {
-        new Notice(`-> ${ws.label}: "${todo.text}"`);
+        new Notice(t("notice.sent", { label: ws.label, text: todo.text }));
       }
     } catch (e) {
-      new Notice(`Senden fehlgeschlagen: ${(e as Error).message}`);
+      new Notice(t("notice.sendFailed", { error: (e as Error).message }));
       if (continuous) this.endContinuous(file.path);
     }
   }
@@ -326,10 +335,7 @@ export default class HerdrPlugin extends Plugin {
   private onContinuousStep(file: TFile, marked: boolean) {
     if (!this.continuous.has(file.path)) return; // wurde gestoppt
     if (!marked) {
-      this.endContinuous(
-        file.path,
-        `Kontinuierlicher Modus angehalten (Timeout/kein Arbeitsbeginn): "${file.basename}"`
-      );
+      this.endContinuous(file.path, t("notice.continuousPaused", { name: file.basename }));
       return;
     }
     void this.doSend(file, true);
@@ -362,11 +368,8 @@ class HerdrSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Herdr-Ordner")
-      .setDesc(
-        "Vault-relativer Ordner, den das Plugin beachtet (z.B. 'herdr' oder 'projekte/herdr'). " +
-          "Der Dateiname einer Notiz darin steht fuer den Workspace. Leer = ganzer Vault."
-      )
+      .setName(t("set.folder.name"))
+      .setDesc(t("set.folder.desc"))
       .addText((t) =>
         t
           .setPlaceholder("herdr")
@@ -378,10 +381,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Socket-Pfad")
-      .setDesc(
-        "Pfad zum Herdr-API-Socket. Leer = Standard ($HERDR_SOCKET_PATH oder ~/.config/herdr/herdr.sock)."
-      )
+      .setName(t("set.socket.name"))
+      .setDesc(t("set.socket.desc"))
       .addText((t) =>
         t
           .setPlaceholder(defaultSocketPath())
@@ -393,11 +394,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("herdr-Programmpfad")
-      .setDesc(
-        "Pfad zum herdr-Binary fuer das Auto-Abhaken (nutzt `herdr agent wait`). " +
-          "Leer = `herdr` aus dem PATH. Falls Obsidian den PATH nicht kennt, vollen Pfad eintragen (z.B. ~/.local/bin/herdr)."
-      )
+      .setName(t("set.herdrPath.name"))
+      .setDesc(t("set.herdrPath.desc"))
       .addText((t) =>
         t
           .setPlaceholder("herdr")
@@ -409,8 +407,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Mit Enter abschicken")
-      .setDesc("Nach dem To-Do-Text automatisch Enter senden (Agent startet sofort).")
+      .setName(t("set.submitEnter.name"))
+      .setDesc(t("set.submitEnter.desc"))
       .addToggle((t) =>
         t.setValue(this.plugin.settings.submitWithEnter).onChange(async (v) => {
           this.plugin.settings.submitWithEnter = v;
@@ -419,11 +417,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Automatisch abhaken")
-      .setDesc(
-        "Checkbox abhaken, sobald der Agent nach dem Senden fertig ist (working -> idle). " +
-          "Benoetigt 'Mit Enter abschicken'."
-      )
+      .setName(t("set.autoCheck.name"))
+      .setDesc(t("set.autoCheck.desc"))
       .addToggle((t) =>
         t.setValue(this.plugin.settings.autoCheck).onChange(async (v) => {
           this.plugin.settings.autoCheck = v;
@@ -432,8 +427,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Timeout Arbeitsbeginn (Sekunden)")
-      .setDesc("Wie lange auf den Wechsel zu 'working' gewartet wird, bevor das Auto-Abhaken aufgibt.")
+      .setName(t("set.workingTimeout.name"))
+      .setDesc(t("set.workingTimeout.desc"))
       .addText((t) =>
         t.setValue(String(this.plugin.settings.workingTimeoutSec)).onChange(async (v) => {
           const n = Number(v);
@@ -445,8 +440,8 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Timeout Fertigstellung (Minuten)")
-      .setDesc("Maximale Wartezeit auf 'idle' (Agent fertig), bevor das Auto-Abhaken aufgibt.")
+      .setName(t("set.idleTimeout.name"))
+      .setDesc(t("set.idleTimeout.desc"))
       .addText((t) =>
         t.setValue(String(this.plugin.settings.idleTimeoutMin)).onChange(async (v) => {
           const n = Number(v);

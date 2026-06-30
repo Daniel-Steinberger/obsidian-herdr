@@ -34,6 +34,12 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
 - `src/tracker.ts` — Auto-Abhaken-Zustandslogik + `onComplete`-Callback für die
   Verkettung im kontinuierlichen Modus + Submit-Absicherung (Enter-Retry, siehe
   Erkenntnisse).
+- `src/i18n.ts` — Internationalisierung. Sprache aus
+  `localStorage["language"]` (leer = Englisch), Dictionaries `de`/`en`,
+  `t(key, params)` mit `{name}`-Platzhaltern; Fallback en → Schlüssel. Alle
+  sichtbaren Strings (Commands, Notices, Statusbar, Einstellungen) laufen
+  darüber. Neue Sprache: Code in `SUPPORTED` + Dictionary mit denselben
+  Schlüsseln wie `en`.
 
 ## WICHTIGE Erkenntnisse (live gegen Herdr v0.7.1 / Protokoll 14 verifiziert)
 
@@ -121,11 +127,12 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v0.5.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v0.6.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
-Statusbar-Buttons `6acfadb`; Submit-Absicherung mit Enter-Retry). Funktioniert
-live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus, Statusbar-Leiste,
-Submit-Absicherung. Eigenes Git-Repo, Branch `main`, kein Remote.
+Statusbar-Buttons `6acfadb`; Submit-Absicherung `f09520d`; Internationalisierung
+de/en). Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
+Statusbar-Leiste, Submit-Absicherung, i18n. Eigenes Git-Repo, Branch `main`, kein
+Remote.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
 Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren
@@ -142,7 +149,10 @@ zeigen.
 
 ## Konventionen
 
-Antworten/Commits/Doku auf Deutsch (Umlaute korrekt). Commits ohne AI-Co-Author-
-Zeile für dieses Repo nötig? — bisher mit `Co-Authored-By: Claude ...`.
+Antworten/Commits/Doku auf Deutsch (Umlaute korrekt). **Sichtbare UI-Strings
+gehören NICHT als Literal in den Code, sondern in `src/i18n.ts`** (de + en);
+deutsche Strings dort mit korrekten Umlauten (ä/ö/ü/ß), nicht ASCII-Digraphen.
+Commits ohne AI-Co-Author-Zeile für dieses Repo nötig? — bisher mit
+`Co-Authored-By: Claude ...`.
 Temporäre Dateien NICHT ins Repo (siehe `.gitignore`: `main.js`, `test/*.cjs`,
 `node_modules/`, `data.json`).
