@@ -1,6 +1,6 @@
 {
   "name": "herdr-obsidian",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Obsidian-Plugin: Bruecke zwischen Notizen-Checklisten und dem Herdr-Terminal-Multiplexer.",
   "main": "main.js",
   "scripts": {
