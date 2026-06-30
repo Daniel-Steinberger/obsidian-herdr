@@ -32,7 +32,8 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
 - `src/agent-wait.ts` — wartet auf Agent-Status via `child_process` →
   `herdr agent wait`.
 - `src/tracker.ts` — Auto-Abhaken-Zustandslogik + `onComplete`-Callback für die
-  Verkettung im kontinuierlichen Modus.
+  Verkettung im kontinuierlichen Modus + Submit-Absicherung (Enter-Retry, siehe
+  Erkenntnisse).
 
 ## WICHTIGE Erkenntnisse (live gegen Herdr v0.7.1 / Protokoll 14 verifiziert)
 
@@ -57,6 +58,18 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
   aktiv hat); das Enter landet garantiert nach dem End-Marker → echtes Submit.
   Verifiziert gegen v0.7.1 (dispatchbar, `{"type":"ok"}`). Server-Code:
   `handle_pane_send_input` + `encode_api_text` in `src/app/api{,_helpers}.rs`.
+- **Submit-Absicherung (Enter-Retry):** Auch mit `send_input` wird das
+  gebündelte Enter beim TUI-Agent gelegentlich verschluckt (Text steht dann
+  unabgeschickt im Feld). Gegenmittel im Tracker (Schritt 1): in kurzen
+  Intervallen (Default 2 s) per `herdr agent wait --status working` prüfen, ob
+  der Agent zu arbeiten beginnt; bleibt er idle, ein **separates** Enter
+  nachschicken (`client.submit(pane)` = `send_input {keys:["Enter"]}`, ohne
+  Text). Das wiederholt sich **ohne festes Limit, bis der Agent einmal
+  `working` war** (= gilt als abgeschickt) oder das Arbeitsbeginn-Zeitfenster
+  (`workingTimeoutMs`) abläuft. Ein zeitlich getrenntes Enter wird vom
+  idle-Agent als Submit erkannt (verifiziert: Text im Feld → `submit()` → Befehl
+  läuft). Greift nur, wenn getrackt wird (continuous oder Auto-Abhaken) und
+  „Mit Enter abschicken" an ist.
 - Socket: `~/.config/herdr/herdr.sock` (oder `$HERDR_SOCKET_PATH`).
 - `pane.read` zum Zurücklesen braucht `source: "visible"` (nicht `recent`).
 - Test-Trick ohne echten Agent: `workspace.create {focus:true}` (focus:false →
@@ -108,11 +121,11 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v0.4.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v0.5.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
-Statusbar-Buttons `6acfadb`). Funktioniert live: Senden, Mapping, Auto-Abhaken,
-kontinuierlicher Modus, Statusbar-Leiste. Eigenes Git-Repo, Branch `main`, kein
-Remote.
+Statusbar-Buttons `6acfadb`; Submit-Absicherung mit Enter-Retry). Funktioniert
+live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus, Statusbar-Leiste,
+Submit-Absicherung. Eigenes Git-Repo, Branch `main`, kein Remote.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
 Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren

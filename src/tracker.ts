@@ -9,6 +9,14 @@ export interface TrackOptions {
   workingTimeoutMs: number;
   /** Max. Wartezeit auf Fertigstellung (idle) in ms. */
   idleTimeoutMs: number;
+  /**
+   * Submit-Absicherung: Enter erneut senden, wenn der Agent nach dem Senden
+   * nicht zu arbeiten beginnt (Text steht unabgeschickt im Eingabefeld).
+   * Fehlt der Callback, ist die Absicherung aus (Verhalten wie zuvor).
+   */
+  resubmit?: () => Promise<void>;
+  /** Intervall je „beginnt der Agent zu arbeiten?"-Probe in ms (Default 2000). */
+  submitProbeMs?: number;
 }
 
 interface Entry {
@@ -63,18 +71,43 @@ export class CompletionTracker {
     initialStatus: string,
     opts: TrackOptions
   ): Promise<void> {
-    // Schritt 1: Arbeitsbeginn abwarten (falls Agent nicht schon arbeitet).
+    // Schritt 1: Arbeitsbeginn abwarten (falls Agent nicht schon arbeitet),
+    // mit Submit-Absicherung: In kurzen Intervallen pruefen, ob der Agent zu
+    // arbeiten beginnt. Tut er das nicht, steht der Text vermutlich
+    // unabgeschickt im Eingabefeld -> Enter nachschicken und erneut pruefen.
+    // Das wiederholt sich, bis der Agent EINMAL `working` war (= abgeschickt)
+    // oder das Arbeitsbeginn-Zeitfenster (workingTimeoutMs) ablaeuft.
     if (initialStatus !== "working") {
-      entry.handle = waitForStatus(
-        opts.herdrPath,
-        paneId,
-        "working",
-        opts.workingTimeoutMs,
-        opts.socketPath
-      );
-      const r = await entry.handle.promise;
-      if (entry.cancelled) return;
-      if (r !== "matched") {
+      const canResubmit = !!opts.resubmit;
+      const probeMs = canResubmit ? opts.submitProbeMs ?? 2000 : opts.workingTimeoutMs;
+      let elapsed = 0;
+      let resubmits = 0;
+      let started = false;
+
+      while (elapsed < opts.workingTimeoutMs) {
+        const probe = Math.min(probeMs, opts.workingTimeoutMs - elapsed);
+        entry.handle = waitForStatus(opts.herdrPath, paneId, "working", probe, opts.socketPath);
+        const r = await entry.handle.promise;
+        if (entry.cancelled) return;
+        if (r === "matched") {
+          started = true;
+          break;
+        }
+        elapsed += probe;
+        // Noch kein Arbeitsbeginn -> Enter nachschicken und weiter pruefen,
+        // solange das Zeitfenster nicht abgelaufen ist (kein festes Limit).
+        if (canResubmit && elapsed < opts.workingTimeoutMs) {
+          resubmits++;
+          try {
+            await opts.resubmit!();
+            new Notice(`Kein Arbeitsbeginn -- Enter erneut gesendet (#${resubmits}).`);
+          } catch {
+            /* Senden fehlgeschlagen -> weiter pruefen, naechster Versuch */
+          }
+        }
+      }
+
+      if (!started) {
         this.entries.delete(paneId);
         new Notice(`Auto-Abhaken: Arbeitsbeginn fuer "${entry.text}" nicht erkannt.`);
         entry.onComplete?.(false);

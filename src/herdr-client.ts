@@ -146,4 +146,14 @@ export class HerdrClient {
       keys: submit ? ["Enter"] : [],
     });
   }
+
+  /**
+   * Nur ein Enter an den Pane senden (kein Text) — fuer die Submit-Absicherung:
+   * Wenn das mit dem Paste gebuendelte Enter verschluckt wurde und der Text
+   * unabgeschickt im Eingabefeld steht, holt ein spaeteres, separates Enter das
+   * Abschicken nach (`pane.send_input` mit leerem Text laesst diesen weg).
+   */
+  async submit(paneId: string): Promise<void> {
+    await this.call("pane.send_input", { pane_id: paneId, keys: ["Enter"] });
+  }
 }

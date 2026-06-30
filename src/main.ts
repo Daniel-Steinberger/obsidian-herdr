@@ -302,6 +302,12 @@ export default class HerdrPlugin extends Plugin {
             socketPath: this.resolveSocketPath(),
             workingTimeoutMs: this.settings.workingTimeoutSec * 1000,
             idleTimeoutMs: this.settings.idleTimeoutMin * 60 * 1000,
+            // Submit-Absicherung nur sinnvoll, wenn wir ueberhaupt Enter senden.
+            resubmit: this.settings.submitWithEnter
+              ? async () => {
+                  await this.client().submit(paneId);
+                }
+              : undefined,
           },
           continuous ? (marked) => this.onContinuousStep(file, marked) : undefined
         );
