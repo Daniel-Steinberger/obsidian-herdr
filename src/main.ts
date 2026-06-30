@@ -9,22 +9,33 @@ import {
 import { HerdrClient, defaultSocketPath } from "./herdr-client";
 import { nextOpen } from "./todos";
 import { resolveWorkspace } from "./mapping";
+import { CompletionTracker } from "./tracker";
 
 interface HerdrSettings {
   socketPath: string;
+  herdrPath: string;
   submitWithEnter: boolean;
+  autoCheck: boolean;
+  workingTimeoutSec: number;
+  idleTimeoutMin: number;
 }
 
 const DEFAULT_SETTINGS: HerdrSettings = {
   socketPath: "",
+  herdrPath: "",
   submitWithEnter: true,
+  autoCheck: true,
+  workingTimeoutSec: 30,
+  idleTimeoutMin: 30,
 };
 
 export default class HerdrPlugin extends Plugin {
   settings: HerdrSettings = DEFAULT_SETTINGS;
+  private tracker!: CompletionTracker;
 
   async onload() {
     await this.loadSettings();
+    this.tracker = new CompletionTracker(this.app);
 
     this.addCommand({
       id: "send-next-todo",
@@ -41,9 +52,16 @@ export default class HerdrPlugin extends Plugin {
     this.addSettingTab(new HerdrSettingTab(this.app, this));
   }
 
+  onunload() {
+    this.tracker?.stopAll();
+  }
+
+  resolveSocketPath(): string {
+    return this.settings.socketPath.trim() || defaultSocketPath();
+  }
+
   client(): HerdrClient {
-    const sock = this.settings.socketPath.trim() || defaultSocketPath();
-    return new HerdrClient(sock);
+    return new HerdrClient(this.resolveSocketPath());
   }
 
   async pingHerdr() {
@@ -89,8 +107,20 @@ export default class HerdrPlugin extends Plugin {
         return;
       }
 
+      const initialStatus = ws.agent_status;
       await client.sendToPane(ws.pane_id, todo.text, this.settings.submitWithEnter);
-      new Notice(`-> ${ws.label}: "${todo.text}"`);
+
+      if (this.settings.autoCheck && this.settings.submitWithEnter) {
+        this.tracker.track(ws.pane_id, file, todo.lineNo, todo.text, initialStatus, {
+          herdrPath: this.settings.herdrPath.trim() || "herdr",
+          socketPath: this.resolveSocketPath(),
+          workingTimeoutMs: this.settings.workingTimeoutSec * 1000,
+          idleTimeoutMs: this.settings.idleTimeoutMin * 60 * 1000,
+        });
+        new Notice(`-> ${ws.label}: "${todo.text}"\n(wird abgehakt, wenn der Agent fertig ist)`);
+      } else {
+        new Notice(`-> ${ws.label}: "${todo.text}"`);
+      }
     } catch (e) {
       new Notice(`Senden fehlgeschlagen: ${(e as Error).message}`);
     }
@@ -138,6 +168,22 @@ class HerdrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("herdr-Programmpfad")
+      .setDesc(
+        "Pfad zum herdr-Binary fuer das Auto-Abhaken (nutzt `herdr agent wait`). " +
+          "Leer = `herdr` aus dem PATH. Falls Obsidian den PATH nicht kennt, vollen Pfad eintragen (z.B. ~/.local/bin/herdr)."
+      )
+      .addText((t) =>
+        t
+          .setPlaceholder("herdr")
+          .setValue(this.plugin.settings.herdrPath)
+          .onChange(async (v) => {
+            this.plugin.settings.herdrPath = v;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Mit Enter abschicken")
       .setDesc("Nach dem To-Do-Text automatisch Enter senden (Agent startet sofort).")
       .addToggle((t) =>
@@ -145,6 +191,49 @@ class HerdrSettingTab extends PluginSettingTab {
           this.plugin.settings.submitWithEnter = v;
           await this.plugin.saveSettings();
         })
+      );
+
+    new Setting(containerEl)
+      .setName("Automatisch abhaken")
+      .setDesc(
+        "Checkbox abhaken, sobald der Agent nach dem Senden fertig ist (working -> idle). " +
+          "Benoetigt 'Mit Enter abschicken'."
+      )
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.autoCheck).onChange(async (v) => {
+          this.plugin.settings.autoCheck = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Timeout Arbeitsbeginn (Sekunden)")
+      .setDesc("Wie lange auf den Wechsel zu 'working' gewartet wird, bevor das Auto-Abhaken aufgibt.")
+      .addText((t) =>
+        t
+          .setValue(String(this.plugin.settings.workingTimeoutSec))
+          .onChange(async (v) => {
+            const n = Number(v);
+            if (Number.isFinite(n) && n > 0) {
+              this.plugin.settings.workingTimeoutSec = n;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Timeout Fertigstellung (Minuten)")
+      .setDesc("Maximale Wartezeit auf 'idle' (Agent fertig), bevor das Auto-Abhaken aufgibt.")
+      .addText((t) =>
+        t
+          .setValue(String(this.plugin.settings.idleTimeoutMin))
+          .onChange(async (v) => {
+            const n = Number(v);
+            if (Number.isFinite(n) && n > 0) {
+              this.plugin.settings.idleTimeoutMin = n;
+              await this.plugin.saveSettings();
+            }
+          })
       );
   }
 }

@@ -1,5 +1,6 @@
 node_modules/
 main.js
 *.js.map
+test/*.cjs
 .DS_Store
 data.json
