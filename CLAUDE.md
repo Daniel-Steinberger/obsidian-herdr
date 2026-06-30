@@ -18,7 +18,10 @@ Socket-API ist genau dafür da).
 
 Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemon.
 
-- `src/main.ts` — Plugin-Lifecycle, Commands, Settings, kontinuierlicher Modus.
+- `src/main.ts` — Plugin-Lifecycle, Commands, Settings, kontinuierlicher Modus,
+  Statusbar-Leiste (Buttons „nächster Schritt" / „alle kontinuierlich",
+  nur sichtbar wenn aktive Notiz im Geltungsbereich; `styles.css` im Root wird
+  von Obsidian über den Symlink automatisch geladen).
 - `src/herdr-client.ts` — Unix-Socket-Client (line-delimited JSON, eine
   Verbindung pro Request). Methoden: `ping`, `workspace.list`+`agent.list`
   (gejoint zu `WorkspaceView` mit `pane_id`/`cwd`), `pane.send_input`
@@ -105,10 +108,10 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v0.3.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
-`f18eef1`, Release `a616aa6`; Senden via `pane.send_input`). Funktioniert live:
-Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus. Eigenes Git-Repo, Branch
-`main`, kein Remote.
+v0.4.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+`f18eef1`, Release `a616aa6`; Senden via `pane.send_input`; Statusbar-Buttons).
+Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
+Statusbar-Leiste. Eigenes Git-Repo, Branch `main`, kein Remote.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
 Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren
@@ -118,7 +121,6 @@ zeigen.
 
 ## Mögliche nächste Schritte
 
-- Statusbar-Anzeige des laufenden (kontinuierlichen) Modus.
 - Mehrere Agents pro Workspace unterscheiden (aktuell wird der erste genommen).
 - Command zum Abbrechen einer einzelnen laufenden Verfolgung.
 - Optional: rohes `events.subscribe` erneut prüfen, falls Herdr aktualisiert

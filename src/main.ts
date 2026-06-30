@@ -5,9 +5,11 @@ import {
   PluginSettingTab,
   Setting,
   TFile,
+  setIcon,
+  setTooltip,
 } from "obsidian";
 import { HerdrClient, defaultSocketPath } from "./herdr-client";
-import { nextOpen } from "./todos";
+import { nextOpen, parseTodos } from "./todos";
 import { resolveWorkspace } from "./mapping";
 import { CompletionTracker } from "./tracker";
 
@@ -37,6 +39,9 @@ export default class HerdrPlugin extends Plugin {
   private tracker!: CompletionTracker;
   /** Notizen im kontinuierlichen Modus: Dateipfad -> zuletzt getrackte pane_id. */
   private continuous = new Map<string, string>();
+  private statusBarEl!: HTMLElement;
+  /** Monoton steigend; verwirft veraltete (ueberholte) Statusbar-Renders. */
+  private statusSeq = 0;
 
   async onload() {
     await this.loadSettings();
@@ -67,6 +72,24 @@ export default class HerdrPlugin extends Plugin {
     });
 
     this.addSettingTab(new HerdrSettingTab(this.app, this));
+
+    // Statusbar-Leiste unten: Buttons fuer Einzelschritt + kontinuierlich.
+    this.statusBarEl = this.addStatusBarItem();
+    this.statusBarEl.addClass("herdr-statusbar");
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => this.refreshStatusBar())
+    );
+    this.registerEvent(
+      this.app.workspace.on("file-open", () => this.refreshStatusBar())
+    );
+    // Anzahl offener To-Dos aktualisieren, wenn die aktive Notiz sich aendert
+    // (z.B. nach dem Auto-Abhaken).
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (f) => {
+        if (f === this.app.workspace.getActiveFile()) this.refreshStatusBar();
+      })
+    );
+    this.refreshStatusBar();
   }
 
   onunload() {
@@ -87,6 +110,70 @@ export default class HerdrPlugin extends Plugin {
     const folder = this.settings.herdrFolder.trim().replace(/^\/+|\/+$/g, "");
     if (folder.length === 0) return true;
     return file.path === folder || file.path.startsWith(folder + "/");
+  }
+
+  /** Statusbar-Leiste neu aufbauen (Sichtbarkeit + Buttons + Zaehler). */
+  private refreshStatusBar() {
+    void this.renderStatusBar();
+  }
+
+  private async renderStatusBar() {
+    const el = this.statusBarEl;
+    if (!el) return;
+    const seq = ++this.statusSeq;
+    const file = this.app.workspace.getActiveFile();
+
+    // Nur fuer Notizen im Geltungsbereich anzeigen.
+    if (!file || !this.inHerdrFolder(file)) {
+      el.empty();
+      el.hide();
+      return;
+    }
+
+    let openCount = 0;
+    try {
+      const content = await this.app.vault.cachedRead(file);
+      openCount = parseTodos(content).filter((t) => !t.done).length;
+    } catch {
+      /* Datei nicht lesbar -> 0 offene */
+    }
+    // Ein spaeter gestarteter Render hat uns ueberholt -> Ergebnis verwerfen.
+    if (seq !== this.statusSeq) return;
+    el.show();
+    el.empty();
+    const hasOpen = openCount > 0;
+    const running = this.continuous.has(file.path);
+
+    const label = el.createSpan({ cls: "herdr-sb-label" });
+    label.setText(running ? `Herdr: laeuft (${openCount})` : `Herdr: ${openCount} offen`);
+    if (running) label.addClass("herdr-active");
+
+    // Button 1: einzelnen Schritt senden.
+    const stepBtn = el.createSpan({ cls: "clickable-icon herdr-sb-btn" });
+    setIcon(stepBtn, "play");
+    setTooltip(stepBtn, "Naechstes To-Do an den Agent senden");
+    if (hasOpen) {
+      stepBtn.onclick = () => void this.sendNextTodo();
+    } else {
+      stepBtn.addClass("herdr-disabled");
+    }
+
+    // Button 2: kontinuierlichen Modus togglen (alle Schritte / stoppen).
+    const allBtn = el.createSpan({ cls: "clickable-icon herdr-sb-btn" });
+    if (running) {
+      setIcon(allBtn, "square");
+      allBtn.addClass("herdr-active");
+      setTooltip(allBtn, "Kontinuierlichen Modus stoppen");
+      allBtn.onclick = () => this.stopContinuous();
+    } else {
+      setIcon(allBtn, "chevrons-right");
+      setTooltip(allBtn, "Alle To-Dos kontinuierlich abarbeiten");
+      if (hasOpen) {
+        allBtn.onclick = () => void this.startContinuous();
+      } else {
+        allBtn.addClass("herdr-disabled");
+      }
+    }
   }
 
   async pingHerdr() {
@@ -123,6 +210,7 @@ export default class HerdrPlugin extends Plugin {
       return;
     }
     this.continuous.set(file.path, "");
+    this.refreshStatusBar();
     new Notice(`Kontinuierlicher Modus gestartet: "${file.basename}"`);
     await this.doSend(file, true);
   }
@@ -146,6 +234,7 @@ export default class HerdrPlugin extends Plugin {
     const paneId = this.continuous.get(filePath);
     this.continuous.delete(filePath);
     if (paneId) this.tracker.cancel(paneId);
+    this.refreshStatusBar();
     if (notice) new Notice(notice);
   }
 

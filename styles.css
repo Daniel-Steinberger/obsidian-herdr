@@ -1,0 +1,27 @@
+/* Herdr-Bridge: Statusbar-Leiste */
+.herdr-statusbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.herdr-statusbar .herdr-sb-label {
+  margin-right: 2px;
+}
+
+/* Icon-Buttons kompakt in die Statusbar einpassen. */
+.herdr-statusbar .herdr-sb-btn {
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.herdr-statusbar .herdr-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Laufender kontinuierlicher Modus / aktiver Stop-Button. */
+.herdr-statusbar .herdr-active {
+  color: var(--interactive-accent);
+}
