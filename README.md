@@ -26,7 +26,15 @@ nach dem Senden auf `working` warten (Agent hat aufgenommen), danach auf `idle`
 (fertig) -> Checkbox abhaken. Begann der Agent nie erkennbar zu arbeiten, wird
 NICHT abgehakt.
 
+## Geltungsbereich (Herdr-Ordner)
+
+In den Einstellungen legst du einen vault-relativen **Herdr-Ordner** fest
+(Default `herdr`). Nur Notizen darin werden beachtet. Leer = ganzer Vault.
+
 ## Notiz <-> Workspace Mapping
+
+Innerhalb des Herdr-Ordners steht der **Dateiname** der Notiz fuer den Workspace.
+Reihenfolge:
 
 1. Frontmatter `herdr-workspace:` (matcht Workspace-ID, Label oder cwd-Basename)
 2. sonst: Dateiname der Notiz gegen Label oder cwd-Basename
@@ -44,10 +52,17 @@ herdr-workspace: herdr
 ## Commands
 
 - **Naechstes offenes To-Do an den Agent senden**
+- **Kontinuierlichen Modus fuer diese Notiz starten** -- arbeitet alle offenen
+  To-Dos nacheinander ab: nach jedem fertigen To-Do wird automatisch das
+  naechste gesendet, bis keins mehr offen ist (oder ein Schritt in den Timeout
+  laeuft).
+- **Kontinuierlichen Modus stoppen** -- stoppt den Durchlauf der aktiven Notiz
+  (bzw. alle laufenden, falls die aktive Notiz keinen hat).
 - **Verbindung zu Herdr testen (ping)**
 
 ## Einstellungen
 
+- **Herdr-Ordner** -- vault-relativer Ordner, den das Plugin beachtet (Default `herdr`); leer = ganzer Vault
 - **Socket-Pfad** -- leer = `$HERDR_SOCKET_PATH` bzw. `~/.config/herdr/herdr.sock`
 - **herdr-Programmpfad** -- fuer das Auto-Abhaken; leer = `herdr` aus dem PATH.
   Falls Obsidian den PATH nicht kennt, vollen Pfad eintragen (z.B. `~/.local/bin/herdr`).

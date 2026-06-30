@@ -17,6 +17,7 @@ interface Entry {
   filePath: string;
   lineNo: number;
   text: string;
+  onComplete?: (marked: boolean) => void;
 }
 
 /**
@@ -40,7 +41,8 @@ export class CompletionTracker {
     lineNo: number,
     text: string,
     initialStatus: string,
-    opts: TrackOptions
+    opts: TrackOptions,
+    onComplete?: (marked: boolean) => void
   ): void {
     this.cancel(paneId); // ein neues To-Do fuer denselben Pane loest das alte ab
     const entry: Entry = {
@@ -49,6 +51,7 @@ export class CompletionTracker {
       filePath: file.path,
       lineNo,
       text,
+      onComplete,
     };
     this.entries.set(paneId, entry);
     void this.run(paneId, entry, initialStatus, opts);
@@ -74,6 +77,7 @@ export class CompletionTracker {
       if (r !== "matched") {
         this.entries.delete(paneId);
         new Notice(`Auto-Abhaken: Arbeitsbeginn fuer "${entry.text}" nicht erkannt.`);
+        entry.onComplete?.(false);
         return;
       }
     }
@@ -92,9 +96,11 @@ export class CompletionTracker {
 
     if (r2 !== "matched") {
       new Notice(`Auto-Abhaken: Timeout beim Warten auf "${entry.text}".`);
+      entry.onComplete?.(false);
       return;
     }
     await this.complete(entry);
+    entry.onComplete?.(true);
   }
 
   private async complete(entry: Entry): Promise<void> {
