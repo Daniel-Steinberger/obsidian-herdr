@@ -128,11 +128,22 @@ export class HerdrClient {
     });
   }
 
-  /** Literaltext in einen Pane schreiben, optional mit Enter abschicken. */
+  /**
+   * Literaltext in einen Pane schreiben, optional mit Enter abschicken.
+   *
+   * Nutzt `pane.send_input` (Text + Keys in EINEM atomaren Request) statt
+   * `send_text` + separatem `send_keys`. Wichtig: `send_input` umschliesst den
+   * Text serverseitig mit Bracketed-Paste-Markern (\e[200~ ... \e[201~), wenn
+   * der Agent Bracketed-Paste aktiv hat, und schreibt das Enter garantiert NACH
+   * dem End-Marker. Damit landet das Enter ausserhalb des Pastes (echtes
+   * Submit) statt als Zeilenumbruch im Eingabefeld zu versickern — das Race der
+   * frueheren Zwei-Request-Variante entfaellt.
+   */
   async sendToPane(paneId: string, text: string, submit = true): Promise<void> {
-    await this.call("pane.send_text", { pane_id: paneId, text });
-    if (submit) {
-      await this.call("pane.send_keys", { pane_id: paneId, keys: ["Enter"] });
-    }
+    await this.call("pane.send_input", {
+      pane_id: paneId,
+      text,
+      keys: submit ? ["Enter"] : [],
+    });
   }
 }

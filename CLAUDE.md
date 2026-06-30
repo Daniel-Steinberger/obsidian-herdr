@@ -21,8 +21,8 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
 - `src/main.ts` — Plugin-Lifecycle, Commands, Settings, kontinuierlicher Modus.
 - `src/herdr-client.ts` — Unix-Socket-Client (line-delimited JSON, eine
   Verbindung pro Request). Methoden: `ping`, `workspace.list`+`agent.list`
-  (gejoint zu `WorkspaceView` mit `pane_id`/`cwd`), `pane.send_text`,
-  `pane.send_keys`.
+  (gejoint zu `WorkspaceView` mit `pane_id`/`cwd`), `pane.send_input`
+  (Text + Enter atomar, siehe Erkenntnisse).
 - `src/todos.ts` — Checklisten parsen/abhaken (Regex auf `- [ ]` / `* [x]`).
 - `src/mapping.ts` — Notiz → Workspace (Frontmatter `herdr-workspace:` oder
   Dateiname, gematcht gegen Label/cwd-Basename).
@@ -44,6 +44,16 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
   „Fertig" = **idle nach working**. Auto-Abhaken-Heuristik: nach Senden auf
   `working` warten (Aufnahme), dann auf `idle`. Kein Arbeitsbeginn erkannt →
   NICHT abhaken.
+- **Senden via `pane.send_input` (`{pane_id, text, keys}`), NICHT `send_text` +
+  separatem `send_keys`.** `send_text` schreibt rohe Bytes ohne Paste-Marker;
+  ein danach in einem zweiten Request gefeuertes `send_keys ["Enter"]` versickert
+  beim TUI-Agent zeitweise als Zeilenumbruch im Eingabefeld statt als Submit
+  (Race + fehlendes Bracketed-Paste-Wrapping). `send_input` schreibt Text + Keys
+  in EINEM atomaren Request und umschliesst den Text serverseitig mit
+  Bracketed-Paste-Markern (`\e[200~…\e[201~`, nur wenn Agent bracketed_paste
+  aktiv hat); das Enter landet garantiert nach dem End-Marker → echtes Submit.
+  Verifiziert gegen v0.7.1 (dispatchbar, `{"type":"ok"}`). Server-Code:
+  `handle_pane_send_input` + `encode_api_text` in `src/app/api{,_helpers}.rs`.
 - Socket: `~/.config/herdr/herdr.sock` (oder `$HERDR_SOCKET_PATH`).
 - `pane.read` zum Zurücklesen braucht `source: "visible"` (nicht `recent`).
 - Test-Trick ohne echten Agent: `workspace.create {focus:true}` (focus:false →
@@ -95,9 +105,10 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v0.2.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
-`f18eef1`, Release `a616aa6`). Funktioniert live: Senden, Mapping, Auto-Abhaken,
-kontinuierlicher Modus. Eigenes Git-Repo, Branch `main`, kein Remote.
+v0.3.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+`f18eef1`, Release `a616aa6`; Senden via `pane.send_input`). Funktioniert live:
+Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus. Eigenes Git-Repo, Branch
+`main`, kein Remote.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
 Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren
