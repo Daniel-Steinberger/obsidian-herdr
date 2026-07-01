@@ -1,4 +1,4 @@
-# herdr-obsidian — Handoff / Projektkontext
+# obsidian-herdr — Handoff / Projektkontext
 
 Obsidian-Desktop-Plugin als Brücke zwischen Notizen-Checklisten und dem
 [Herdr](https://github.com/ogulcancelik/herdr)-Terminal-Multiplexer.
@@ -119,8 +119,9 @@ wieder auf.
 
 ## Installation im Vault
 
-Der Vault-Plugin-Ordner ist ein **Symlink** auf dieses Repo:
-`/home/dst/Sync/DVS-Obsidian/.obsidian/plugins/herdr-obsidian → /home/dst/src/herdr-obsidian/`.
+Der Vault-Plugin-Ordner ist ein **Symlink** auf dieses Repo (Ordnername =
+manifest-`id` `herdr`):
+`/home/dst/Sync/DVS-Obsidian/.obsidian/plugins/herdr → /home/dst/src/obsidian-herdr/`.
 `npm run build` aktualisiert damit direkt das installierte Plugin; in Obsidian
 nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 `/home/dst/Sync/DVS-Obsidian/`, Projektnotizen unter `herdr/`.
@@ -134,9 +135,9 @@ de/en). Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus
 Statusbar-Leiste, Submit-Absicherung, i18n. Eigenes Git-Repo, Branch `main`, kein
 Remote.
 
-Offener Punkt zum Testen: Die Beispielnotiz `herdr/herdr-obsidian.md` mappt per
-Dateiname auf einen Workspace `herdr-obsidian` — der muss in Herdr existieren
-(Workspace im Verzeichnis `/home/dst/src/herdr-obsidian` öffnen) oder per
+Offener Punkt zum Testen: Die Beispielnotiz `herdr/obsidian-herdr.md` mappt per
+Dateiname auf einen Workspace `obsidian-herdr` — der muss in Herdr existieren
+(Workspace im Verzeichnis `/home/dst/src/obsidian-herdr` öffnen) oder per
 Frontmatter `herdr-workspace: herdr` auf den bestehenden `herdr`-Workspace
 zeigen.
 

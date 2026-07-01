@@ -78,7 +78,7 @@ npm run build      # erzeugt main.js
 ```
 
 Zum Testen Plugin-Ordner (mit `manifest.json`, `main.js`) nach
-`<Vault>/.obsidian/plugins/herdr-obsidian/` kopieren oder symlinken und in
+`<Vault>/.obsidian/plugins/herdr/` kopieren oder symlinken und in
 Obsidian unter "Community-Plugins" aktivieren.
 
 ## Status
