@@ -128,10 +128,11 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v0.6.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v1.0.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
 Statusbar-Buttons `6acfadb`; Submit-Absicherung `f09520d`; Internationalisierung
-de/en). Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
+de/en `d2e1a78`; Umbenennung id `herdr`/Repo `obsidian-herdr` `ca8b1e7`).
+Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
 Statusbar-Leiste, Submit-Absicherung, i18n. Eigenes Git-Repo, Branch `main`, kein
 Remote.
 

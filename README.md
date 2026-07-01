@@ -3,37 +3,86 @@
 Verbindet Notizen-Checklisten in Obsidian mit Agents im
 [Herdr](https://github.com/ogulcancelik/herdr)-Terminal-Multiplexer.
 
-Workflow: Du fuehrst deine To-Dos pro Projekt als Markdown-Checkliste in einer
-Notiz. Per Command schickt das Plugin das naechste offene To-Do an den Agent im
-zugehoerigen Herdr-Workspace. Sobald der Agent fertig ist, wird die Checkbox
-automatisch abgehakt.
+Workflow: Du führst deine To-Dos pro Projekt als Markdown-Checkliste in einer
+Notiz. Per Command schickt das Plugin das nächste offene To-Do an den Agent im
+zugehörigen Herdr-Workspace. Sobald der Agent fertig ist, wird die Checkbox
+automatisch abgehakt. Ein kontinuierlicher Modus arbeitet die ganze Checkliste
+nacheinander ab.
 
-## Wie es funktioniert
+Quelle der Wahrheit ist die Obsidian-Notiz; Herdr ist nur der Ausführer.
 
-Obsidian Desktop laeuft auf Electron, daher kann das Plugin direkt den
-Unix-Socket der Herdr-API ansprechen (line-delimited JSON) -- **kein separater
-Daemon noetig**. Verwendete API-Methoden:
+## Installation
 
-- `ping` -- Verbindungstest
-- `workspace.list` + `agent.list` -- Workspaces inkl. `pane_id`/`cwd` ermitteln
-- `pane.send_text` + `pane.send_keys` -- To-Do in den Agent-Pane schreiben
+**Voraussetzungen**
 
-**Auto-Abhaken:** Hierfuer ruft das Plugin Herdrs eigenen, erprobten CLI auf
-(`herdr agent wait <pane> --status ...`). Grund: der rohe `events.subscribe`-
-Stream lieferte in der getesteten Herdr-Version v0.7.1 unzuverlaessig
-Status-Events, waehrend `herdr agent wait` zuverlaessig funktioniert. Logik:
-nach dem Senden auf `working` warten (Agent hat aufgenommen), danach auf `idle`
-(fertig) -> Checkbox abhaken. Begann der Agent nie erkennbar zu arbeiten, wird
-NICHT abgehakt.
+- Obsidian **Desktop** (nutzt Node-`net`/Unix-Sockets, läuft nicht auf Mobile).
+- Ein laufender **Herdr** (getestet gegen v0.7.1); der API-Socket muss lokal
+  erreichbar sein (bei entferntem Herdr z.B. per SSH-Forwarding).
+- Das **`herdr`-CLI** im PATH — wird fürs Auto-Abhaken benötigt
+  (`herdr agent wait`). Ist der PATH in Obsidian nicht bekannt, lässt sich der
+  volle Pfad in den Einstellungen hinterlegen.
+
+**Aus dem Quelltext bauen und installieren**
+
+```bash
+npm install
+npm run build      # erzeugt main.js (tsc-Check + esbuild)
+```
+
+Danach die drei Dateien `manifest.json`, `main.js` und `styles.css` in den
+Plugin-Ordner deines Vaults kopieren — der Ordnername muss der Plugin-`id`
+`herdr` entsprechen:
+
+```
+<Vault>/.obsidian/plugins/herdr/
+├── manifest.json
+├── main.js
+└── styles.css
+```
+
+Für die Entwicklung ist ein **Symlink** praktischer (Änderungen sind nach
+`npm run build` + Obsidian-Reload sofort aktiv):
+
+```bash
+ln -s /pfad/zu/obsidian-herdr <Vault>/.obsidian/plugins/herdr
+```
+
+Zum Schluss in Obsidian unter **Einstellungen → Community-Plugins** das Plugin
+„Herdr Bridge" aktivieren.
+
+## Verwendung
+
+1. Lege in den Einstellungen einen **Herdr-Ordner** fest (Default `herdr`).
+2. Erstelle darin eine Notiz mit einer Markdown-Checkliste.
+3. Öffne in Herdr einen Workspace, der zur Notiz passt (siehe Mapping unten).
+4. Löse eines der Commands aus — per Command-Palette oder über die Buttons in
+   der Statusleiste.
+
+### Statusleiste
+
+Liegt die aktive Notiz im Herdr-Ordner, zeigt die Statusleiste unten die Zahl
+der offenen To-Dos und zwei Buttons: **▶ nächster Schritt** (ein To-Do senden)
+und **⏩ alle kontinuierlich** (Start/Stop des kontinuierlichen Modus).
+
+## Commands
+
+- **Nächstes offenes To-Do an den Agent senden**
+- **Kontinuierlichen Modus für diese Notiz starten** — arbeitet alle offenen
+  To-Dos nacheinander ab: nach jedem fertigen To-Do wird automatisch das
+  nächste gesendet, bis keins mehr offen ist (oder ein Schritt in den Timeout
+  läuft).
+- **Kontinuierlichen Modus stoppen** — stoppt den Durchlauf der aktiven Notiz
+  (bzw. alle laufenden, falls die aktive Notiz keinen hat).
+- **Verbindung zu Herdr testen (ping)**
 
 ## Geltungsbereich (Herdr-Ordner)
 
 In den Einstellungen legst du einen vault-relativen **Herdr-Ordner** fest
 (Default `herdr`). Nur Notizen darin werden beachtet. Leer = ganzer Vault.
 
-## Notiz <-> Workspace Mapping
+## Notiz ↔ Workspace Mapping
 
-Innerhalb des Herdr-Ordners steht der **Dateiname** der Notiz fuer den Workspace.
+Innerhalb des Herdr-Ordners steht der **Dateiname** der Notiz für den Workspace.
 Reihenfolge:
 
 1. Frontmatter `herdr-workspace:` (matcht Workspace-ID, Label oder cwd-Basename)
@@ -49,49 +98,58 @@ herdr-workspace: herdr
 - [ ] README aktualisieren
 ```
 
-## Commands
+## Wie es funktioniert
 
-- **Naechstes offenes To-Do an den Agent senden**
-- **Kontinuierlichen Modus fuer diese Notiz starten** -- arbeitet alle offenen
-  To-Dos nacheinander ab: nach jedem fertigen To-Do wird automatisch das
-  naechste gesendet, bis keins mehr offen ist (oder ein Schritt in den Timeout
-  laeuft).
-- **Kontinuierlichen Modus stoppen** -- stoppt den Durchlauf der aktiven Notiz
-  (bzw. alle laufenden, falls die aktive Notiz keinen hat).
-- **Verbindung zu Herdr testen (ping)**
+Obsidian Desktop läuft auf Electron, daher kann das Plugin direkt den
+Unix-Socket der Herdr-API ansprechen (line-delimited JSON) — **kein separater
+Daemon nötig**. Verwendete API-Methoden:
+
+- `ping` — Verbindungstest
+- `workspace.list` + `agent.list` — Workspaces inkl. `pane_id`/`cwd` ermitteln
+- `pane.send_input` — To-Do (Text + Enter) atomar in den Agent-Pane schreiben.
+  Der Text wird serverseitig mit Bracketed-Paste-Markern umschlossen, damit das
+  Enter als echtes Abschicken ankommt statt als Zeilenumbruch.
+
+**Auto-Abhaken:** Hierfür ruft das Plugin Herdrs eigenen, erprobten CLI auf
+(`herdr agent wait <pane> --status ...`). Grund: der rohe `events.subscribe`-
+Stream lieferte in der getesteten Herdr-Version v0.7.1 unzuverlässig
+Status-Events, während `herdr agent wait` zuverlässig funktioniert. Logik:
+nach dem Senden auf `working` warten (Agent hat aufgenommen), danach auf `idle`
+(fertig) → Checkbox abhaken. Begann der Agent nie erkennbar zu arbeiten, wird
+NICHT abgehakt.
+
+**Submit-Absicherung:** Wird das mit dem Text gebündelte Enter vom TUI-Agent
+verschluckt (Text steht dann unabgeschickt im Eingabefeld), erkennt das Plugin
+das am ausbleibenden `working`-Status und schickt in kurzen Intervallen ein
+separates Enter nach, bis der Agent zu arbeiten beginnt oder das
+Arbeitsbeginn-Zeitfenster abläuft.
+
+## Sprache
+
+Die Oberfläche folgt Obsidians eingestellter Sprache (Deutsch/Englisch,
+Fallback Englisch).
 
 ## Einstellungen
 
-- **Herdr-Ordner** -- vault-relativer Ordner, den das Plugin beachtet (Default `herdr`); leer = ganzer Vault
-- **Socket-Pfad** -- leer = `$HERDR_SOCKET_PATH` bzw. `~/.config/herdr/herdr.sock`
-- **herdr-Programmpfad** -- fuer das Auto-Abhaken; leer = `herdr` aus dem PATH.
+- **Herdr-Ordner** — vault-relativer Ordner, den das Plugin beachtet (Default `herdr`); leer = ganzer Vault
+- **Socket-Pfad** — leer = `$HERDR_SOCKET_PATH` bzw. `~/.config/herdr/herdr.sock`
+- **herdr-Programmpfad** — fürs Auto-Abhaken; leer = `herdr` aus dem PATH.
   Falls Obsidian den PATH nicht kennt, vollen Pfad eintragen (z.B. `~/.local/bin/herdr`).
-- **Mit Enter abschicken** -- Enter nach dem Text senden
-- **Automatisch abhaken** -- Checkbox abhaken, wenn der Agent fertig ist
-- **Timeout Arbeitsbeginn / Fertigstellung** -- Wartegrenzen fuers Auto-Abhaken
+- **Mit Enter abschicken** — Enter nach dem Text senden
+- **Automatisch abhaken** — Checkbox abhaken, wenn der Agent fertig ist
+- **Timeout Arbeitsbeginn / Fertigstellung** — Wartegrenzen fürs Auto-Abhaken
 
-## Build
+## Entwicklung
+
+`test/itest.ts` und `test/itest2.ts` sind Integrationstests gegen einen
+laufenden Herdr-Server (mit esbuild bündeln, dann mit node ausführen):
 
 ```bash
-npm install
-npm run build      # erzeugt main.js
+npx esbuild test/itest.ts --bundle --platform=node --format=cjs \
+  --external:obsidian --outfile=test/itest.cjs && node test/itest.cjs
 ```
-
-Zum Testen Plugin-Ordner (mit `manifest.json`, `main.js`) nach
-`<Vault>/.obsidian/plugins/herdr/` kopieren oder symlinken und in
-Obsidian unter "Community-Plugins" aktivieren.
-
-## Status
-
-Funktioniert (live gegen Herdr v0.7.1 getestet): Sende-Command, Mapping,
-Auto-Abhaken (working -> idle). Moegliche naechste Schritte: Statusanzeige in
-der Statusbar, mehrere Agents pro Workspace unterscheiden, Command zum manuellen
-Abhaken/Abbrechen einer laufenden Verfolgung.
-
-`test/itest.ts` ist ein Integrationstest gegen einen laufenden Herdr-Server
-(bundeln mit esbuild, dann mit node ausfuehren).
 
 ## Desktop-only
 
-Nutzt Node-`net`/Unix-Sockets -- laeuft nur in Obsidian Desktop, nicht Mobile.
+Nutzt Node-`net`/Unix-Sockets — läuft nur in Obsidian Desktop, nicht Mobile.
 Bei entferntem Herdr muss der Socket lokal erreichbar sein (z.B. SSH-Forwarding).
