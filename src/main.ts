@@ -9,7 +9,7 @@ import {
   setTooltip,
 } from "obsidian";
 import { HerdrClient, defaultSocketPath } from "./herdr-client";
-import { nextOpen, parseTodos } from "./todos";
+import { nextOpen, parseTodos, withContext } from "./todos";
 import { resolveWorkspace } from "./mapping";
 import { CompletionTracker } from "./tracker";
 import { t } from "./i18n";
@@ -291,7 +291,7 @@ export default class HerdrPlugin extends Plugin {
 
       const initialStatus = ws.agent_status;
       const paneId = ws.pane_id;
-      await client.sendToPane(paneId, todo.text, this.settings.submitWithEnter);
+      await client.sendToPane(paneId, withContext(todo), this.settings.submitWithEnter);
 
       const wantTracking = continuous || (this.settings.autoCheck && this.settings.submitWithEnter);
       if (wantTracking) {

@@ -128,13 +128,23 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v1.0.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v1.1.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
 Statusbar-Buttons `6acfadb`; Submit-Absicherung `f09520d`; Internationalisierung
-de/en `d2e1a78`; Umbenennung id `herdr`/Repo `obsidian-herdr` `ca8b1e7`).
+de/en `d2e1a78`; Umbenennung id `herdr`/Repo `obsidian-herdr` `ca8b1e7`; Release
+1.0.0 `db6fb36`; Kontext-Einsammeln unter To-Dos, Release 1.1.0 <Commit folgt>).
 Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
-Statusbar-Leiste, Submit-Absicherung, i18n. Eigenes Git-Repo, Branch `main`, kein
-Remote.
+Statusbar-Leiste, Submit-Absicherung, i18n, eingerückter Kontext unter To-Dos.
+Eigenes Git-Repo, Branch `main`, Remote `origin`
+(github.com/Daniel-Steinberger/obsidian-herdr).
+
+`src/todos.ts` sammelt unter einer Checkbox eingerückte Folgezeilen (Freitext
+oder Bullet-Punkte ohne eigene Checkbox) als `context` ein, solange sie
+staerker eingerueckt sind als die Checkbox-Zeile selbst; eine eigene
+verschachtelte Checkbox beendet das Einsammeln und bleibt eigenstaendig
+trackbar. `withContext(todo)` haengt `context` an `text` an und wird beim
+Senden (`main.ts` `doSend`) statt des reinen `text` an `pane.send_input`
+gegeben; Notices zeigen weiterhin nur `todo.text`.
 
 Offener Punkt zum Testen: Die Beispielnotiz `herdr/obsidian-herdr.md` mappt per
 Dateiname auf einen Workspace `obsidian-herdr` — der muss in Herdr existieren
