@@ -43,6 +43,10 @@ const en: Dict = {
   "sb.tip.stop": "Stop continuous mode",
   "sb.tip.all": "Work through all to-dos continuously",
 
+  // Folder context menu
+  "menu.spaceNote": "Herdr: note for space",
+  "menu.noSpaces": "No Herdr spaces (is Herdr running?)",
+
   // Notices
   "notice.herdrOk": "Herdr OK: v{version} (protocol {protocol})",
   "notice.herdrUnreachable": "Herdr unreachable: {error}",
@@ -67,6 +71,9 @@ const en: Dict = {
   "notice.noWorkStart": "Auto-check: work start for \"{text}\" not detected.",
   "notice.idleTimeout": "Auto-check: timeout while waiting for \"{text}\".",
   "notice.checked": "Checked off: \"{text}\"",
+  "notice.noteCreated": "Note for space \"{label}\" created: {name}",
+  "notice.noteOpened": "Opened: {name}",
+  "notice.noteCreateFailed": "Could not create note: {error}",
 
   // Settings
   "set.folder.name": "Herdr folder",
@@ -106,6 +113,10 @@ const de: Dict = {
   "sb.tip.stop": "Kontinuierlichen Modus stoppen",
   "sb.tip.all": "Alle To-Dos kontinuierlich abarbeiten",
 
+  // Ordner-Kontextmenü
+  "menu.spaceNote": "Herdr: Notiz für Space",
+  "menu.noSpaces": "Keine Herdr-Spaces (läuft Herdr?)",
+
   // Hinweise
   "notice.herdrOk": "Herdr OK: v{version} (Protokoll {protocol})",
   "notice.herdrUnreachable": "Herdr nicht erreichbar: {error}",
@@ -130,6 +141,9 @@ const de: Dict = {
   "notice.noWorkStart": "Auto-Abhaken: Arbeitsbeginn für \"{text}\" nicht erkannt.",
   "notice.idleTimeout": "Auto-Abhaken: Timeout beim Warten auf \"{text}\".",
   "notice.checked": "Abgehakt: \"{text}\"",
+  "notice.noteCreated": "Notiz für Space \"{label}\" angelegt: {name}",
+  "notice.noteOpened": "Geöffnet: {name}",
+  "notice.noteCreateFailed": "Notiz konnte nicht angelegt werden: {error}",
 
   // Einstellungen
   "set.folder.name": "Herdr-Ordner",

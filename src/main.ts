@@ -1,14 +1,17 @@
 import {
   App,
+  Menu,
   Notice,
   Plugin,
   PluginSettingTab,
   Setting,
   TFile,
+  TFolder,
+  normalizePath,
   setIcon,
   setTooltip,
 } from "obsidian";
-import { HerdrClient, defaultSocketPath } from "./herdr-client";
+import { HerdrClient, WorkspaceView, defaultSocketPath } from "./herdr-client";
 import { nextOpen, parseTodos, withContext } from "./todos";
 import { resolveWorkspace } from "./mapping";
 import { CompletionTracker } from "./tracker";
@@ -35,6 +38,20 @@ const DEFAULT_SETTINGS: HerdrSettings = {
   idleTimeoutMin: 30,
 };
 
+/** Letzter Pfadbestandteil (fuer die Unterscheidung gleichnamiger Spaces). */
+function baseName(p: string): string {
+  const parts = p.replace(/\/+$/, "").split("/");
+  return parts[parts.length - 1] ?? p;
+}
+
+/** Ersetzt in Vault-Dateinamen unzulaessige Zeichen durch '-'. */
+function sanitizeFileName(name: string): string {
+  return name
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default class HerdrPlugin extends Plugin {
   settings: HerdrSettings = DEFAULT_SETTINGS;
   private tracker!: CompletionTracker;
@@ -43,6 +60,14 @@ export default class HerdrPlugin extends Plugin {
   private statusBarEl!: HTMLElement;
   /** Monoton steigend; verwirft veraltete (ueberholte) Statusbar-Renders. */
   private statusSeq = 0;
+  /**
+   * Zuletzt bekannte Herdr-Spaces fuer das Ordner-Kontextmenue. Das
+   * `file-menu`-Event ist synchron, deshalb kann das Menue nicht selbst auf
+   * `workspace.list` warten -- es liest aus diesem Cache, der bei Layout-Ready
+   * und bei jedem Oeffnen des Ordner-Menues (fuer das naechste Mal) aktualisiert
+   * wird.
+   */
+  private spacesCache: WorkspaceView[] = [];
 
   async onload() {
     await this.loadSettings();
@@ -91,6 +116,19 @@ export default class HerdrPlugin extends Plugin {
       })
     );
     this.refreshStatusBar();
+
+    // Ordner-Kontextmenue: auf dem Herdr-Ordner ein Untermenue mit den
+    // verfuegbaren Herdr-Spaces anbieten (Notiz anlegen/oeffnen).
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (file instanceof TFolder && this.isHerdrScopeFolder(file)) {
+          this.addSpaceMenu(menu, file);
+          void this.refreshSpaces(); // fuer das naechste Oeffnen frisch halten
+        }
+      })
+    );
+    // Spaces einmal vorab laden, damit das erste Rechtsklick-Menue gefuellt ist.
+    this.app.workspace.onLayoutReady(() => void this.refreshSpaces());
   }
 
   onunload() {
@@ -111,6 +149,101 @@ export default class HerdrPlugin extends Plugin {
     const folder = this.settings.herdrFolder.trim().replace(/^\/+|\/+$/g, "");
     if (folder.length === 0) return true;
     return file.path === folder || file.path.startsWith(folder + "/");
+  }
+
+  /**
+   * Ist `folder` der konfigurierte Herdr-Ordner? Bei leerer Einstellung
+   * (= ganzer Vault als Geltungsbereich) qualifiziert sich jeder Ordner.
+   */
+  private isHerdrScopeFolder(folder: TFolder): boolean {
+    const configured = this.settings.herdrFolder.trim().replace(/^\/+|\/+$/g, "");
+    if (configured.length === 0) return true;
+    return folder.path === configured;
+  }
+
+  /** Herdr-Spaces neu laden; bei Fehler bleibt der letzte Stand erhalten. */
+  private async refreshSpaces(): Promise<void> {
+    try {
+      this.spacesCache = await this.client().workspaces();
+    } catch {
+      /* Herdr nicht erreichbar -> zuletzt bekannte Liste behalten */
+    }
+  }
+
+  /**
+   * Haengt an das Ordner-Kontextmenue ein Untermenue mit den Herdr-Spaces an.
+   * `setSubmenu` ist erst ab Obsidian 1.4 (und nicht in den Typen) vorhanden --
+   * fehlt es, werden die Spaces flach ins Menue gehaengt.
+   */
+  private addSpaceMenu(menu: Menu, folder: TFolder): void {
+    menu.addItem((item) => {
+      item.setTitle(t("menu.spaceNote")).setIcon("layout-grid");
+      const setSubmenu = (item as unknown as { setSubmenu?: () => Menu }).setSubmenu;
+      if (typeof setSubmenu === "function") {
+        this.fillSpaceItems(setSubmenu.call(item), folder);
+      } else {
+        item.setDisabled(true); // Eintrag dient nur als Ueberschrift
+        this.fillSpaceItems(menu, folder);
+      }
+    });
+  }
+
+  /** Fuellt `target` (Untermenue oder Hauptmenue) mit einem Eintrag je Space. */
+  private fillSpaceItems(target: Menu, folder: TFolder): void {
+    const spaces = this.spacesCache;
+    if (spaces.length === 0) {
+      target.addItem((i) => i.setTitle(t("menu.noSpaces")).setDisabled(true));
+      return;
+    }
+    // Mehrfach vorkommende Labels (z.B. zwei Workspaces gleichen Namens) per
+    // cwd-Basename unterscheidbar machen.
+    const counts = new Map<string, number>();
+    for (const w of spaces) counts.set(w.label, (counts.get(w.label) ?? 0) + 1);
+    for (const ws of spaces) {
+      const ambiguous = (counts.get(ws.label) ?? 0) > 1 && ws.cwd;
+      const title = ambiguous ? `${ws.label} — ${baseName(ws.cwd!)}` : ws.label;
+      target.addItem((i) =>
+        i
+          .setTitle(title)
+          .setIcon("terminal")
+          .onClick(() => void this.openOrCreateNoteForSpace(folder, ws))
+      );
+    }
+  }
+
+  /**
+   * Legt die zum Space passende Notiz im Ordner an (falls nicht vorhanden) oder
+   * oeffnet sie. Dateiname = Space-Label; enthaelt das Label
+   * dateinamens-unvertraegliche Zeichen, wird zusaetzlich `herdr-workspace:`
+   * ins Frontmatter geschrieben, damit das Mapping trotzdem greift.
+   */
+  private async openOrCreateNoteForSpace(folder: TFolder, ws: WorkspaceView): Promise<void> {
+    const base = sanitizeFileName(ws.label);
+    if (base.length === 0) {
+      new Notice(t("notice.noteCreateFailed", { error: ws.label }));
+      return;
+    }
+    const dir = folder.isRoot() ? "" : folder.path;
+    const path = normalizePath(dir ? `${dir}/${base}.md` : `${base}.md`);
+
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      await this.app.workspace.getLeaf(false).openFile(existing);
+      new Notice(t("notice.noteOpened", { name: existing.basename }));
+      return;
+    }
+
+    const needFrontmatter = base !== ws.label;
+    const content = needFrontmatter
+      ? `---\nherdr-workspace: "${ws.label.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"\n---\n\n`
+      : "";
+    try {
+      const created = await this.app.vault.create(path, content);
+      await this.app.workspace.getLeaf(false).openFile(created);
+      new Notice(t("notice.noteCreated", { label: ws.label, name: created.basename }));
+    } catch (e) {
+      new Notice(t("notice.noteCreateFailed", { error: (e as Error).message }));
+    }
   }
 
   /** Statusbar-Leiste neu aufbauen (Sichtbarkeit + Buttons + Zaehler). */

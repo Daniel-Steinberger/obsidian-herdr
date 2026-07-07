@@ -92,6 +92,15 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
   Notizen in diesem vault-relativen Ordner werden beachtet. Leer = ganzer Vault.
 - Innerhalb davon steht der **Dateiname** für den Workspace; Frontmatter
   `herdr-workspace:` überschreibt.
+- **Ordner-Kontextmenü** (`file-menu`-Event, `main.ts`): Rechtsklick auf den
+  Herdr-Ordner (bzw. jeden Ordner, wenn `herdrFolder` leer ist) zeigt ein
+  Untermenü „Herdr: Notiz für Space" mit allen Spaces aus `workspace.list`.
+  Klick legt die passende Notiz an (Dateiname = sanitiztes Space-Label; bei
+  dateinamens-unverträglichen Zeichen zusätzlich `herdr-workspace:`-Frontmatter,
+  damit das Mapping greift) oder öffnet sie. Da `file-menu` **synchron** ist,
+  liest das Menü aus `spacesCache` (befüllt bei `onLayoutReady` + bei jedem
+  Öffnen des Ordner-Menüs neu). `setSubmenu` ist nicht in den Obsidian-Typen
+  (Cast), erst ab 1.4 vorhanden → Fallback: flache Einträge im Hauptmenü.
 
 ## Kontinuierlicher Modus
 
