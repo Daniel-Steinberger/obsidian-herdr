@@ -34,6 +34,13 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
 - `src/tracker.ts` — Auto-Abhaken-Zustandslogik + `onComplete`-Callback für die
   Verkettung im kontinuierlichen Modus + Submit-Absicherung (Enter-Retry, siehe
   Erkenntnisse).
+- `src/explorer-icons.ts` — `ExplorerDecorator`: blendet je Notiz im
+  Datei-Explorer links vom Namen ein Status-Icon ein (Herdr-Agent-Status).
+  **Undokumentierte Obsidian-Internals** (`getLeavesOfType("file-explorer")`,
+  `view.fileItems`, `titleEl`/`titleInnerEl`) → lokale Interfaces + Cast +
+  Guards; MutationObserver hält Icons beim Neu-Rendern (Auf-/Zuklappen/Scrollen)
+  nach. `apply()` ist idempotent (schreibt nur bei Änderung → kein
+  Observer-Loop).
 - `src/i18n.ts` — Internationalisierung. Sprache aus
   `localStorage["language"]` (leer = Englisch), Dictionaries `de`/`en`,
   `t(key, params)` mit `{name}`-Platzhaltern; Fallback en → Schlüssel. Alle
@@ -102,6 +109,26 @@ Obsidian Desktop (Electron) → Node-`net`/`child_process`. Kein separater Daemo
   Öffnen des Ordner-Menüs neu). `setSubmenu` ist nicht in den Obsidian-Typen
   (Cast), erst ab 1.4 vorhanden → Fallback: flache Einträge im Hauptmenü.
 
+## Explorer-Status-Icons
+
+- Setting **`explorerStatusIcons`** (Default an) + **`explorerPollSec`**
+  (Default 3). Zeigt links jeder Notiz im Herdr-Ordner ein Icon für den
+  Herdr-Agent-Status, Optik wie Herdrs TUI: idle `✓` grün `#A6E3A1`, done `●`
+  teal `#94E2D5`, working `●` gelb `#F9E2AF` (CSS-Puls), blocked `◉` rot
+  `#F38BA8`, kein Agent `○` grau `#6C7086` (Glyphen/Farben aus
+  `herdr:src/ui/status.rs` bzw. `state.rs`, Catppuccin Mocha; CSS in
+  `styles.css`).
+- **Status ist autoritativ aus `workspace.list.agent_status`** (bereits pro
+  Workspace aggregiert; liefert `done` **direkt** — kein Selbst-Ableiten). Nur
+  „kein Agent" leitet das Plugin ab: kein Workspace-Mapping **oder**
+  `agent_status` ∉ {idle,done,working,blocked} (v.a. `unknown`). **KEIN
+  pane_id-Guard** — der kippte bei Join-Race legitime done/idle fälschlich auf
+  „none" (verifiziert).
+- **Kein Herdr-Event, sondern Polling** (`registerInterval`, `refreshSpaces()`
+  füttert `spacesCache`, dann `explorer.apply()`), plus Re-Apply bei
+  `vault.on(create/rename/delete)` und `workspace.on("layout-change")`.
+  Begründung: `events.subscribe` unzuverlässig (siehe Erkenntnisse).
+
 ## Kontinuierlicher Modus
 
 - Start/Stop-Command pro Notiz. `main.ts` hält `continuous: Map<filePath,
@@ -137,13 +164,16 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v1.1.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v1.2.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
 Statusbar-Buttons `6acfadb`; Submit-Absicherung `f09520d`; Internationalisierung
 de/en `d2e1a78`; Umbenennung id `herdr`/Repo `obsidian-herdr` `ca8b1e7`; Release
-1.0.0 `db6fb36`; Kontext-Einsammeln unter To-Dos, Release 1.1.0 <Commit folgt>).
+1.0.0 `db6fb36`; Kontext-Einsammeln unter To-Dos + Release 1.1.0 `5d07a18`;
+Ordner-Kontextmenü `a34f2fa`; Explorer-Status-Icons + Release 1.2.0 <Commit folgt>).
 Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
-Statusbar-Leiste, Submit-Absicherung, i18n, eingerückter Kontext unter To-Dos.
+Statusbar-Leiste, Submit-Absicherung, i18n, eingerückter Kontext unter To-Dos,
+Ordner-Kontextmenü, Explorer-Status-Icons (live gegen Herdr verifiziert; DOM
+funktioniert in Obsidian, Explorer-Item-Felder sind `selfEl`/`innerEl`).
 Eigenes Git-Repo, Branch `main`, Remote `origin`
 (github.com/Daniel-Steinberger/obsidian-herdr).
 

@@ -15,6 +15,7 @@ import { HerdrClient, WorkspaceView, defaultSocketPath } from "./herdr-client";
 import { nextOpen, parseTodos, withContext } from "./todos";
 import { resolveWorkspace } from "./mapping";
 import { CompletionTracker } from "./tracker";
+import { DisplayState, ExplorerDecorator } from "./explorer-icons";
 import { t } from "./i18n";
 
 interface HerdrSettings {
@@ -26,6 +27,10 @@ interface HerdrSettings {
   autoCheck: boolean;
   workingTimeoutSec: number;
   idleTimeoutMin: number;
+  /** Agent-Status-Icons im Datei-Explorer anzeigen. */
+  explorerStatusIcons: boolean;
+  /** Poll-Intervall (Sekunden) fuer die Explorer-Status-Icons. */
+  explorerPollSec: number;
 }
 
 const DEFAULT_SETTINGS: HerdrSettings = {
@@ -36,6 +41,8 @@ const DEFAULT_SETTINGS: HerdrSettings = {
   autoCheck: true,
   workingTimeoutSec: 30,
   idleTimeoutMin: 30,
+  explorerStatusIcons: true,
+  explorerPollSec: 3,
 };
 
 /** Letzter Pfadbestandteil (fuer die Unterscheidung gleichnamiger Spaces). */
@@ -68,10 +75,20 @@ export default class HerdrPlugin extends Plugin {
    * wird.
    */
   private spacesCache: WorkspaceView[] = [];
+  /** Datei-Explorer-Icons (Herdr-Agent-Status). */
+  private explorer!: ExplorerDecorator;
+  /** Verhindert ueberlappende Status-Polls. */
+  private explorerPolling = false;
 
   async onload() {
     await this.loadSettings();
     this.tracker = new CompletionTracker(this.app);
+    this.explorer = new ExplorerDecorator(this.app, {
+      getState: (file) => this.explorerStateForFile(file),
+      inScope: (file) => this.inHerdrFolder(file),
+      enabled: () => this.settings.explorerStatusIcons,
+      label: (state) => t(`status.${state}`),
+    });
 
     this.addCommand({
       id: "send-next-todo",
@@ -129,11 +146,30 @@ export default class HerdrPlugin extends Plugin {
     );
     // Spaces einmal vorab laden, damit das erste Rechtsklick-Menue gefuellt ist.
     this.app.workspace.onLayoutReady(() => void this.refreshSpaces());
+
+    // Explorer-Status-Icons: periodisch pollen (Herdr-Events sind laut CLAUDE.md
+    // unzuverlaessig) und bei DOM-/Vault-Aenderungen neu anwenden.
+    this.registerInterval(
+      window.setInterval(
+        () => void this.refreshExplorerStatus(),
+        Math.max(1, this.settings.explorerPollSec) * 1000
+      )
+    );
+    const reapply = () => this.explorer.apply();
+    this.registerEvent(this.app.vault.on("create", reapply));
+    this.registerEvent(this.app.vault.on("rename", reapply));
+    this.registerEvent(this.app.vault.on("delete", reapply));
+    this.registerEvent(this.app.workspace.on("layout-change", reapply));
+    this.app.workspace.onLayoutReady(() => {
+      this.explorer.start();
+      void this.refreshExplorerStatus();
+    });
   }
 
   onunload() {
     this.tracker?.stopAll();
     this.continuous.clear();
+    this.explorer?.stop();
   }
 
   resolveSocketPath(): string {
@@ -167,6 +203,53 @@ export default class HerdrPlugin extends Plugin {
       this.spacesCache = await this.client().workspaces();
     } catch {
       /* Herdr nicht erreichbar -> zuletzt bekannte Liste behalten */
+    }
+  }
+
+  /** Reaktion auf das Umschalten des Explorer-Icon-Toggles in den Einstellungen. */
+  onExplorerIconsToggled(on: boolean): void {
+    if (on) {
+      this.explorer.start();
+      void this.refreshExplorerStatus();
+    } else {
+      this.explorer.clearAll();
+    }
+  }
+
+  /** Spaces neu holen und die Explorer-Icons aktualisieren (kein Overlap). */
+  private async refreshExplorerStatus(): Promise<void> {
+    if (!this.settings.explorerStatusIcons || this.explorerPolling) return;
+    this.explorerPolling = true;
+    try {
+      await this.refreshSpaces();
+      this.explorer.apply();
+    } finally {
+      this.explorerPolling = false;
+    }
+  }
+
+  /**
+   * Anzeige-Zustand einer Notiz: Mapping auf einen Herdr-Workspace, dann dessen
+   * `agent_status`. `agent_status` ist autoritativ -- Herdr aggregiert
+   * idle/done/working/blocked nur, wenn ein echter Agent existiert; "kein
+   * Agent" ist `unknown` (bzw. gar kein Workspace-Mapping). Deshalb KEIN
+   * pane_id-Guard (der bei Race/fehlendem agent.list-Eintrag ein legitimes
+   * done/idle faelschlich auf "none" kippen wuerde).
+   */
+  private explorerStateForFile(file: TFile): DisplayState {
+    const ws = resolveWorkspace(
+      this.spacesCache,
+      file.basename,
+      this.frontmatterWorkspace(file)
+    );
+    switch (ws?.agent_status) {
+      case "idle":
+      case "done":
+      case "working":
+      case "blocked":
+        return ws.agent_status;
+      default:
+        return "none";
     }
   }
 
@@ -580,6 +663,30 @@ class HerdrSettingTab extends PluginSettingTab {
           const n = Number(v);
           if (Number.isFinite(n) && n > 0) {
             this.plugin.settings.idleTimeoutMin = n;
+            await this.plugin.saveSettings();
+          }
+        })
+      );
+
+    new Setting(containerEl)
+      .setName(t("set.explorerIcons.name"))
+      .setDesc(t("set.explorerIcons.desc"))
+      .addToggle((tg) =>
+        tg.setValue(this.plugin.settings.explorerStatusIcons).onChange(async (v) => {
+          this.plugin.settings.explorerStatusIcons = v;
+          await this.plugin.saveSettings();
+          this.plugin.onExplorerIconsToggled(v);
+        })
+      );
+
+    new Setting(containerEl)
+      .setName(t("set.explorerPoll.name"))
+      .setDesc(t("set.explorerPoll.desc"))
+      .addText((tx) =>
+        tx.setValue(String(this.plugin.settings.explorerPollSec)).onChange(async (v) => {
+          const n = Number(v);
+          if (Number.isFinite(n) && n > 0) {
+            this.plugin.settings.explorerPollSec = n;
             await this.plugin.saveSettings();
           }
         })

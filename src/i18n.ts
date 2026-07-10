@@ -47,6 +47,13 @@ const en: Dict = {
   "menu.spaceNote": "Herdr: note for space",
   "menu.noSpaces": "No Herdr spaces (is Herdr running?)",
 
+  // Explorer status icons (tooltips)
+  "status.idle": "idle",
+  "status.done": "done",
+  "status.working": "working",
+  "status.blocked": "blocked",
+  "status.none": "no agent",
+
   // Notices
   "notice.herdrOk": "Herdr OK: v{version} (protocol {protocol})",
   "notice.herdrUnreachable": "Herdr unreachable: {error}",
@@ -97,6 +104,14 @@ const en: Dict = {
     "How long to wait for the switch to 'working' before auto-check gives up.",
   "set.idleTimeout.name": "Completion timeout (minutes)",
   "set.idleTimeout.desc": "Maximum wait for 'idle' (agent done) before auto-check gives up.",
+  "set.explorerIcons.name": "Agent status icons in the file explorer",
+  "set.explorerIcons.desc":
+    "Show a Herdr agent-status icon left of each note in the Herdr folder " +
+    "(idle / done / working / blocked / no agent), mirroring Herdr's own display.",
+  "set.explorerPoll.name": "Status refresh interval (seconds)",
+  "set.explorerPoll.desc":
+    "How often the agent status is polled from Herdr for the explorer icons. " +
+    "Takes effect after reloading the plugin.",
 };
 
 const de: Dict = {
@@ -116,6 +131,13 @@ const de: Dict = {
   // Ordner-Kontextmenü
   "menu.spaceNote": "Herdr: Notiz für Space",
   "menu.noSpaces": "Keine Herdr-Spaces (läuft Herdr?)",
+
+  // Explorer-Status-Icons (Tooltips)
+  "status.idle": "idle",
+  "status.done": "done",
+  "status.working": "working",
+  "status.blocked": "blocked",
+  "status.none": "kein Agent",
 
   // Hinweise
   "notice.herdrOk": "Herdr OK: v{version} (Protokoll {protocol})",
@@ -167,6 +189,14 @@ const de: Dict = {
     "Wie lange auf den Wechsel zu 'working' gewartet wird, bevor das Auto-Abhaken aufgibt.",
   "set.idleTimeout.name": "Timeout Fertigstellung (Minuten)",
   "set.idleTimeout.desc": "Maximale Wartezeit auf 'idle' (Agent fertig), bevor das Auto-Abhaken aufgibt.",
+  "set.explorerIcons.name": "Agent-Status-Icons im Datei-Explorer",
+  "set.explorerIcons.desc":
+    "Zeigt links von jeder Notiz im Herdr-Ordner ein Herdr-Agent-Status-Icon " +
+    "(idle / done / working / blocked / kein Agent), analog zu Herdrs eigener Darstellung.",
+  "set.explorerPoll.name": "Aktualisierungsintervall (Sekunden)",
+  "set.explorerPoll.desc":
+    "Wie oft der Agent-Status für die Explorer-Icons aus Herdr abgefragt wird. " +
+    "Wirkt nach dem Neuladen des Plugins.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };

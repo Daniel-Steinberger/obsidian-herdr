@@ -25,3 +25,38 @@
 .herdr-statusbar .herdr-active {
   color: var(--interactive-accent);
 }
+
+/* Agent-Status-Icons im Datei-Explorer (Glyphen/Farben wie Herdrs TUI). */
+.herdr-explorer-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  font-size: 0.9em;
+  line-height: 1;
+}
+.herdr-explorer-icon.herdr-st-idle {
+  color: #a6e3a1;
+}
+.herdr-explorer-icon.herdr-st-done {
+  color: #94e2d5;
+}
+.herdr-explorer-icon.herdr-st-working {
+  color: #f9e2af;
+  animation: herdr-pulse 1.2s ease-in-out infinite;
+}
+.herdr-explorer-icon.herdr-st-blocked {
+  color: #f38ba8;
+}
+.herdr-explorer-icon.herdr-st-none {
+  color: #6c7086;
+}
+
+@keyframes herdr-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
