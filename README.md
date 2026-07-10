@@ -64,6 +64,33 @@ Liegt die aktive Notiz im Herdr-Ordner, zeigt die Statusleiste unten die Zahl
 der offenen To-Dos und zwei Buttons: **▶ nächster Schritt** (ein To-Do senden)
 und **⏩ alle kontinuierlich** (Start/Stop des kontinuierlichen Modus).
 
+### Notiz aus Herdr-Space anlegen (Ordner-Kontextmenü)
+
+Ein Rechtsklick auf den Herdr-Ordner im Datei-Explorer zeigt das Untermenü
+**„Herdr: Notiz für Space"** mit allen aktuell in Herdr geöffneten Spaces. Ein
+Klick legt die dazu passende Notiz an (Dateiname = Space-Name; bei
+dateinamens-unverträglichen Zeichen wird zusätzlich `herdr-workspace:` ins
+Frontmatter geschrieben, damit das Mapping greift) oder öffnet sie, falls sie
+schon existiert. So musst du den Namen nicht doppelt — in Herdr und in der
+Notiz — vergeben.
+
+### Status-Icons im Datei-Explorer
+
+Ist die Option **Agent-Status-Icons im Datei-Explorer** aktiviert (Default),
+zeigt das Plugin links neben jeder Notiz im Herdr-Ordner ein Icon mit dem
+Herdr-Agent-Status — in derselben Optik wie Herdrs eigene Anzeige:
+
+| Icon | Farbe | Bedeutung |
+|------|-------|-----------|
+| ✓ | grün | idle (fertig, bereits gesehen) |
+| ● | teal | done (fertig, noch nicht gesehen) |
+| ● | gelb (pulsiert) | working |
+| ◉ | rot | blocked |
+| ○ | grau | kein Agent / nicht zugeordnet |
+
+Der Status wird regelmäßig aus Herdr abgefragt (Intervall einstellbar) und
+sofort bei Datei- oder Layout-Änderungen aktualisiert.
+
 ## Commands
 
 - **Nächstes offenes To-Do an den Agent senden**
@@ -138,6 +165,8 @@ Fallback Englisch).
 - **Mit Enter abschicken** — Enter nach dem Text senden
 - **Automatisch abhaken** — Checkbox abhaken, wenn der Agent fertig ist
 - **Timeout Arbeitsbeginn / Fertigstellung** — Wartegrenzen fürs Auto-Abhaken
+- **Agent-Status-Icons im Datei-Explorer** — Status-Icon links neben jeder Notiz im Herdr-Ordner (Default an)
+- **Aktualisierungsintervall** — wie oft der Status für die Explorer-Icons abgefragt wird (Sekunden; wirkt nach Plugin-Reload)
 
 ## Entwicklung
 
