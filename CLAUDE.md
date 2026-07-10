@@ -164,16 +164,20 @@ nur noch neu laden (Plugin aus/an oder App-Reload). Vault-Wurzel:
 
 ## Stand
 
-v1.2.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
+v1.3.0 (Commits: Grundgerüst `20d635d`, Auto-Abhaken `2730bce`, Folder+Continuous
 `f18eef1`, Release `a616aa6`; Senden via `pane.send_input` `51d9144`;
 Statusbar-Buttons `6acfadb`; Submit-Absicherung `f09520d`; Internationalisierung
 de/en `d2e1a78`; Umbenennung id `herdr`/Repo `obsidian-herdr` `ca8b1e7`; Release
 1.0.0 `db6fb36`; Kontext-Einsammeln unter To-Dos + Release 1.1.0 `5d07a18`;
-Ordner-Kontextmenü `a34f2fa`; Explorer-Status-Icons + Release 1.2.0 <Commit folgt>).
+Ordner-Kontextmenü `a34f2fa`; Explorer-Status-Icons + Release 1.2.0 `e3c7a57`;
+Multi-Agent-Spaces (Tab-Auswahl) + Release 1.3.0 <Commit folgt>).
 Funktioniert live: Senden, Mapping, Auto-Abhaken, kontinuierlicher Modus,
 Statusbar-Leiste, Submit-Absicherung, i18n, eingerückter Kontext unter To-Dos,
 Ordner-Kontextmenü, Explorer-Status-Icons (live gegen Herdr verifiziert; DOM
 funktioniert in Obsidian, Explorer-Item-Felder sind `selfEl`/`innerEl`).
+Multi-Agent: Ziel-Auflösung + Routing (Suffix/Frontmatter/Sektionen) live gegen
+Herdr verifiziert; Modals/Datei-Split/Frontmatter-Schreiben sind Obsidian-Runtime
+und nur dort visuell testbar.
 Eigenes Git-Repo, Branch `main`, Remote `origin`
 (github.com/Daniel-Steinberger/obsidian-herdr).
 
@@ -191,10 +195,57 @@ Dateiname auf einen Workspace `obsidian-herdr` — der muss in Herdr existieren
 Frontmatter `herdr-workspace: herdr` auf den bestehenden `herdr`-Workspace
 zeigen.
 
+## Multi-Agent-Spaces (mehrere Tabs pro Space)
+
+Ein Space kann mehrere Tabs haben, je Tab (i.d.R.) ein Agent-Pane. Erkennt das
+Plugin beim Senden mehr als einen **Agent-Tab** und hat die Notiz noch keine
+Zuordnung, zeigt es einen Auswahldialog (`src/multi-agent.ts`,
+`MultiAgentChooserModal`) mit drei Wegen; die Wahl wird persistiert:
+
+- **Ein Ziel-Tab** (`herdr-tab: <label>` im Frontmatter) — Tab-Picker
+  (`TabPickerModal`, `SuggestModal` mit Status-Glyph). Folge-Sends fragen nicht
+  mehr.
+- **Sektionen** (`herdr-mode: sections`): je Tab eine Überschrift
+  `# <space>.<tab>`; `todos.ts` `parseSections` ordnet To-Dos der Sektion zu,
+  `sendSections` (in `main.ts`) sendet je Sektion an ihren Tab. Bestehende
+  To-Dos wandern beim Einrichten unter Sektion 1. Kontinuierlicher Modus läuft
+  **pro Sektion** (Tracker ist paneId-basiert; `continuous` ist jetzt
+  `Map<path, Set<paneId>>`).
+- **Datei-Split**: Original → `<space>.<tab1>.md` (umbenannt, behält Inhalt),
+  weitere Tabs als leere `<space>.<tab>.md`. Mapping über Dateiname-Suffix.
+
+**Ziel-Auflösung** zentral in `main.ts` `resolveSendTarget`: Space via
+`resolveWorkspace` (Frontmatter `herdr-workspace` bzw. Dateiname, inkl.
+Suffix-Abtrennung `parseSpaceTab`), dann Tab via `resolveTab` (Hinweis:
+`herdr-tab` **>** Dateiname-Suffix; Matching **Label, sonst Nummer**). Ergebnis
+`ok` (ein Pane) | `ambiguous` (Dialog) | `no-workspace`/`no-agent`/`tab-not-found`.
+Client: `herdr-client.ts` `tabs(workspaceId?)` (tab.list + agent.list-Join über
+`tab_id` → `pane_id`; ohne Arg alle Tabs). Statusquelle je Tab ist
+`tab.agent_status`. Command **„Multi-Agent-Handhabung festlegen"** ruft den
+Dialog erneut auf.
+
+Explorer-Icons je Notiz: Einzelziel = ein Icon (Status des Tabs), Sektions-Notiz
+= ein Icon je Sektion (aus `metadataCache.headings` gelesen). `tabsCache` in
+`main.ts` wird im selben Poll wie `spacesCache` gefüllt.
+
+**Sektions-Komfort:**
+- **Icon in der Überschrift** (`src/section-heading-icons.ts`): CM6-Editor-Extension
+  (`registerEditorExtension`), zeigt live in `# <space>.<tab>`-Überschriften den
+  Tab-Status. Status ist extern → `refreshAllHeadingIcons()` (Modul hält die
+  aktiven `EditorView`s) wird nach jedem Poll aufgerufen und dispatcht einen
+  `StateEffect` zum Neuzeichnen. `main.ts` `resolveHeadingIcon` liefert Glyph/
+  Farbe für die aktive Sektions-Notiz. **`@codemirror/{view,state,language}` sind
+  in `esbuild.config.mjs` `external`** (sonst zweite CM6-Instanz → Deko greift nicht).
+- **Cursor-abhängiges Senden**: Im Sektions-Modus sendet „nächstes To-Do"
+  (Einzelschritt) an die Sektion, in der der **Cursor** steht
+  (`activeCursorLine` via `getActiveViewOfType(MarkdownView)`, dann Sektion mit
+  größter `headingLine ≤ Cursor`). Kontinuierlicher Start bleibt „alle Sektionen".
+
 ## Mögliche nächste Schritte
 
-- Mehrere Agents pro Workspace unterscheiden (aktuell wird der erste genommen).
 - Command zum Abbrechen einer einzelnen laufenden Verfolgung.
+- Split-Tabs (mehrere Panes in einem Tab, `pane_count > 1`) gezielt adressieren
+  (aktuell Fallback: der über `agent.list` gejointe Pane des Tabs).
 - Optional: rohes `events.subscribe` erneut prüfen, falls Herdr aktualisiert
   wird (dann ggf. CLI-Abhängigkeit ablösen).
 

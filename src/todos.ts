@@ -61,6 +61,53 @@ export function nextOpen(content: string): TodoItem | null {
   return parseTodos(content).find((t) => !t.done) ?? null;
 }
 
+/** Eine Sektion `# <space>.<tab>` mit ihren To-Dos (Option 2). */
+export interface Section {
+  heading: string;
+  /** Teil hinter `<space>.` — Tab-Label oder -Nummer. */
+  tabToken: string;
+  headingLine: number;
+  todos: TodoItem[];
+}
+
+const HEADING_RE = /^(#{1,6})\s+(.*\S)\s*$/;
+
+/**
+ * Zerlegt den Inhalt in Sektionen, deren Überschrift dem Muster
+ * `<space>.<tab>` folgt. To-Dos werden der zuletzt gesehenen passenden Sektion
+ * zugeordnet; eine nicht passende Überschrift beendet die aktuelle Sektion
+ * (To-Dos davor/dazwischen ohne Sektion werden ignoriert).
+ */
+export function parseSections(content: string, space: string): Section[] {
+  const lines = content.split("\n");
+  const sections: Section[] = [];
+  const prefix = space + ".";
+  let current: Section | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const hm = HEADING_RE.exec(lines[i]);
+    if (hm) {
+      const text = hm[2];
+      if (text.startsWith(prefix) && text.length > prefix.length) {
+        current = { heading: text, tabToken: text.slice(prefix.length), headingLine: i, todos: [] };
+        sections.push(current);
+      } else {
+        current = null; // fremde Überschrift beendet die Sektion
+      }
+      continue;
+    }
+    const cm = CHECKBOX_RE.exec(lines[i]);
+    if (cm && current) {
+      current.todos.push({
+        lineNo: i,
+        text: cm[3],
+        done: cm[2].toLowerCase() === "x",
+        context: collectContext(lines, i),
+      });
+    }
+  }
+  return sections;
+}
+
 /** Liefert den Dateiinhalt mit der Checkbox in `lineNo` auf [x] gesetzt. */
 export function markDone(content: string, lineNo: number): string {
   const lines = content.split("\n");

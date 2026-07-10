@@ -1,4 +1,4 @@
-import { WorkspaceView } from "./herdr-client";
+import { TabView, WorkspaceView } from "./herdr-client";
 
 /**
  * Ordnet eine Notiz einem Herdr-Workspace zu.
@@ -33,4 +33,30 @@ export function resolveWorkspace(
 function basename(p: string): string {
   const parts = p.replace(/\/+$/, "").split("/");
   return parts[parts.length - 1] ?? p;
+}
+
+/**
+ * Loest einen Tab-Hinweis (Label oder Nummer) gegen die Tabs eines Space auf.
+ * Reihenfolge: erst Label-Gleichheit, dann Tab-Nummer (Default-Label = Nummer).
+ */
+export function resolveTab(tabs: TabView[], hint: string): TabView | null {
+  const needle = hint.trim();
+  if (!needle) return null;
+  return (
+    tabs.find((t) => t.label === needle) ??
+    tabs.find((t) => String(t.number) === needle) ??
+    null
+  );
+}
+
+/**
+ * Zerlegt einen Notiz-Basename in Space + optionalen Tab-Suffix `<space>.<tab>`.
+ * Nur der LETZTE Punkt-Abschnitt gilt als moeglicher Tab; ob er wirklich ein Tab
+ * ist, entscheidet erst `resolveTab` gegen die realen Tabs (deshalb wird beim
+ * Aufloesen zuerst der volle Basename als Space probiert). Kein Suffix -> tab null.
+ */
+export function parseSpaceTab(basename: string): { space: string; tab: string | null } {
+  const m = /^(.*)\.([^.]+)$/.exec(basename);
+  if (!m || m[1].length === 0) return { space: basename, tab: null };
+  return { space: m[1], tab: m[2] };
 }

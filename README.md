@@ -100,6 +100,8 @@ sofort bei Datei- oder Layout-Änderungen aktualisiert.
   läuft).
 - **Kontinuierlichen Modus stoppen** — stoppt den Durchlauf der aktiven Notiz
   (bzw. alle laufenden, falls die aktive Notiz keinen hat).
+- **Multi-Agent-Handhabung für diese Notiz festlegen** — öffnet bei einem Space
+  mit mehreren Agent-Tabs den Auswahldialog (siehe „Mehrere Agents pro Space").
 - **Verbindung zu Herdr testen (ping)**
 
 ## Geltungsbereich (Herdr-Ordner)
@@ -124,6 +126,23 @@ herdr-workspace: herdr
 - [ ] Tests reparieren
 - [ ] README aktualisieren
 ```
+
+## Mehrere Agents pro Space
+
+Hat ein Space mehrere Tabs (je Tab ein Agent) und die Notiz ist noch keinem Tab
+zugeordnet, fragt das Plugin beim Senden per Dialog nach — mit drei Wegen:
+
+1. **An einen Tab senden** — Tab auswählen; die Notiz zielt künftig immer darauf
+   (gespeichert als Frontmatter `herdr-tab: <Tab>`).
+2. **Sektionen in der Notiz** — je Tab eine Überschrift `# <space>.<tab>`; To-Dos
+   unter einer Überschrift gehen an den jeweiligen Tab. Vorhandene To-Dos wandern
+   unter die erste Sektion. Der Datei-Explorer zeigt dann ein Icon je Tab.
+3. **In Dateien aufteilen** — die Notiz wird zu `<space>.<tab1>.md` umbenannt
+   (behält den Inhalt) und je weiterem Tab eine leere `<space>.<tab>.md` angelegt.
+
+Tabs werden per **Label, sonst Nummer** angesprochen. Über den Command
+**„Multi-Agent-Handhabung für diese Notiz festlegen"** lässt sich die Wahl
+jederzeit erneut treffen.
 
 ## Wie es funktioniert
 

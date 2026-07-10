@@ -16,7 +16,7 @@ import { App, TAbstractFile, TFile } from "obsidian";
 export type DisplayState = "idle" | "done" | "working" | "blocked" | "none";
 
 /** Glyphen exakt wie Herdrs `agent_icon` (src/ui/status.rs). */
-const GLYPH: Record<DisplayState, string> = {
+export const GLYPH: Record<DisplayState, string> = {
   idle: "✓",
   done: "●",
   working: "●",
@@ -25,6 +25,16 @@ const GLYPH: Record<DisplayState, string> = {
 };
 
 const ICON_CLASS = "herdr-explorer-icon";
+const CONTAINER_CLASS = "herdr-explorer-icons";
+
+/** Ein Icon einer Notiz: Zustand + optionales Label (Tab) fuer den Tooltip. */
+export interface IconState {
+  /** Stabiler Schluessel zur Wiederverwendung des DOM-Knotens (z.B. Tab-Label). */
+  key: string;
+  /** Tab-Label fuer den Tooltip; leer = nur Status anzeigen. */
+  label: string;
+  state: DisplayState;
+}
 
 /**
  * Ungetypte Explorer-Internals, auf die wir defensiv zugreifen. Property-Namen
@@ -45,8 +55,11 @@ interface FileExplorerView {
 }
 
 export interface ExplorerCallbacks {
-  /** Anzeige-Zustand fuer eine Notiz (Mapping + Herdr-Status). */
-  getState(file: TFile): DisplayState;
+  /**
+   * Icons fuer eine Notiz: leer = kein Icon, 1 Element = Einzelziel,
+   * mehrere = Sektions-Notiz (ein Icon je Tab).
+   */
+  getStates(file: TFile): IconState[];
   /** Liegt die Datei im Geltungsbereich (Herdr-Ordner)? */
   inScope(file: TFile): boolean;
   /** Ist das Feature eingeschaltet? */
@@ -127,48 +140,81 @@ export class ExplorerDecorator {
       const eligible =
         file instanceof TFile && file.extension === "md" && this.cb.inScope(file);
       if (!eligible) {
-        this.removeIcon(row);
+        this.removeIcons(row);
         continue;
       }
-      this.setIcon(row, inner, this.cb.getState(file as TFile));
+      this.setIcons(row, inner, this.cb.getStates(file as TFile));
     }
   }
 
-  private setIcon(
+  /**
+   * Setzt/aktualisiert die Icons einer Zeile aus `icons`. Ein Container-Span
+   * haelt je `key` ein Kind-Span. Idempotent: schreibt/ordnet nur bei
+   * tatsaechlicher Aenderung (sonst Observer-Schleife).
+   */
+  private setIcons(
     row: HTMLElement,
     before: HTMLElement | undefined,
-    state: DisplayState
+    icons: IconState[]
   ): void {
-    let icon = row.querySelector<HTMLElement>(`.${ICON_CLASS}`);
-    if (!icon) {
-      icon = document.createElement("span");
-      icon.className = ICON_CLASS;
-      if (before && before.parentElement === row) {
-        row.insertBefore(icon, before); // links vom Namen
-      } else {
-        row.prepend(icon);
+    if (icons.length === 0) {
+      this.removeIcons(row);
+      return;
+    }
+    let container = row.querySelector<HTMLElement>(`.${CONTAINER_CLASS}`);
+    if (!container) {
+      container = document.createElement("span");
+      container.className = CONTAINER_CLASS;
+      if (before && before.parentElement === row) row.insertBefore(container, before);
+      else row.prepend(container);
+    }
+
+    const existing = new Map<string, HTMLElement>();
+    for (const el of Array.from(container.children)) {
+      const key = (el as HTMLElement).dataset.herdrKey;
+      if (key !== undefined) existing.set(key, el as HTMLElement);
+    }
+    const desired = new Set(icons.map((i) => i.key));
+    for (const [key, el] of existing) {
+      if (!desired.has(key)) {
+        el.remove();
+        existing.delete(key);
       }
     }
-    const glyph = GLYPH[state];
-    const cls = `${ICON_CLASS} herdr-st-${state}`;
-    const label = this.cb.label(state);
-    if (icon.textContent !== glyph) icon.textContent = glyph;
-    if (icon.className !== cls) icon.className = cls;
-    if (icon.getAttribute("aria-label") !== label) {
-      icon.setAttribute("aria-label", label);
-      icon.setAttribute("title", label);
+    for (const ic of icons) {
+      let el = existing.get(ic.key);
+      if (!el) {
+        el = document.createElement("span");
+        el.dataset.herdrKey = ic.key;
+        container.appendChild(el);
+        existing.set(ic.key, el);
+      }
+      const glyph = GLYPH[ic.state];
+      const cls = `${ICON_CLASS} herdr-st-${ic.state}`;
+      const status = this.cb.label(ic.state);
+      const tip = ic.label ? `${ic.label}: ${status}` : status;
+      if (el.textContent !== glyph) el.textContent = glyph;
+      if (el.className !== cls) el.className = cls;
+      if (el.getAttribute("title") !== tip) {
+        el.setAttribute("title", tip);
+        el.setAttribute("aria-label", tip);
+      }
     }
+    // Reihenfolge nur bei Abweichung angleichen.
+    const order = Array.from(container.children).map((c) => (c as HTMLElement).dataset.herdrKey);
+    const sameOrder = order.length === icons.length && order.every((k, i) => k === icons[i].key);
+    if (!sameOrder) for (const ic of icons) container.appendChild(existing.get(ic.key)!);
   }
 
-  private removeIcon(row: HTMLElement): void {
-    row.querySelector(`.${ICON_CLASS}`)?.remove();
+  private removeIcons(row: HTMLElement): void {
+    row.querySelector(`.${CONTAINER_CLASS}`)?.remove();
   }
 
   /** Alle injizierten Icons entfernen (Toggle-Off / Unload). */
   clearAll(): void {
     const view = this.view();
     view?.containerEl
-      ?.querySelectorAll(`.${ICON_CLASS}`)
+      ?.querySelectorAll(`.${CONTAINER_CLASS}`)
       .forEach((el) => el.remove());
   }
 }

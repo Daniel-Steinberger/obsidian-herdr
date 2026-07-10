@@ -27,12 +27,24 @@
 }
 
 /* Agent-Status-Icons im Datei-Explorer (Glyphen/Farben wie Herdrs TUI). */
+.herdr-explorer-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+}
 .herdr-explorer-icon {
   display: inline-flex;
   align-items: center;
-  margin-right: 4px;
   font-size: 0.9em;
   line-height: 1;
+}
+
+/* Status-Icon in Sektions-Überschriften (Editor). */
+.herdr-heading-icon {
+  margin-left: 6px;
+  font-size: 0.8em;
+  vertical-align: middle;
 }
 .herdr-explorer-icon.herdr-st-idle {
   color: #a6e3a1;

@@ -42,6 +42,23 @@ export interface WorkspaceView extends WorkspaceInfo {
   agent?: string;
 }
 
+/** Ein Tab aus `tab.list` (ein Tab hat aktuell i.d.R. genau einen Pane). */
+export interface TabInfo {
+  tab_id: string;
+  workspace_id: string;
+  number: number;
+  label: string;
+  agent_status: string;
+  focused: boolean;
+  pane_count: number;
+}
+
+/** Tab angereichert um pane_id/agent aus agent.list (via tab_id). */
+export interface TabView extends TabInfo {
+  pane_id?: string;
+  agent?: string;
+}
+
 export function defaultSocketPath(): string {
   const override = process.env.HERDR_SOCKET_PATH;
   if (override && override.length > 0) return override;
@@ -126,6 +143,28 @@ export class HerdrClient {
       const a = byWs.get(w.workspace_id);
       return { ...w, pane_id: a?.pane_id, cwd: a?.cwd, agent: a?.agent };
     });
+  }
+
+  /**
+   * Tabs eines Workspace, angereichert um pane_id/agent (Join ueber `tab_id`
+   * aus `agent.list`). Wird fuer Multi-Agent-Spaces gebraucht: je Tab ein Ziel.
+   */
+  async tabs(workspaceId?: string): Promise<TabView[]> {
+    const tabRes = await this.call<{ tabs: TabInfo[] }>(
+      "tab.list",
+      workspaceId ? { workspace_id: workspaceId } : {}
+    );
+    const agRes = await this.call<{ agents: AgentInfo[] }>("agent.list");
+    const byTab = new Map<string, AgentInfo>();
+    for (const a of agRes.agents ?? []) {
+      if (a.tab_id && !byTab.has(a.tab_id)) byTab.set(a.tab_id, a);
+    }
+    return (tabRes.tabs ?? [])
+      .filter((tb) => !workspaceId || tb.workspace_id === workspaceId)
+      .map((tb) => {
+        const a = byTab.get(tb.tab_id);
+        return { ...tb, pane_id: a?.pane_id, agent: a?.agent };
+      });
   }
 
   /**

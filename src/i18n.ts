@@ -34,6 +34,7 @@ const en: Dict = {
   "cmd.sendNext": "Send next open to-do to the agent",
   "cmd.startContinuous": "Start continuous mode for this note",
   "cmd.stopContinuous": "Stop continuous mode",
+  "cmd.configureMulti": "Configure multi-agent handling for this note",
   "cmd.ping": "Test connection to Herdr (ping)",
 
   // Status bar
@@ -54,6 +55,20 @@ const en: Dict = {
   "status.blocked": "blocked",
   "status.none": "no agent",
 
+  // Multi-agent chooser
+  "ma.title": "Multiple agents in \"{name}\"",
+  "ma.intro": "The space \"{name}\" has {count} agent tabs. How should this note target them?",
+  "ma.opt1.name": "Send to one tab",
+  "ma.opt1.desc": "Pick a single tab; this note always targets it (stored as herdr-tab).",
+  "ma.opt1.btn": "Pick tab…",
+  "ma.opt2.name": "Sections in this note",
+  "ma.opt2.desc": "Add a heading per tab; to-dos under each heading go to that tab. Existing to-dos move under the first section.",
+  "ma.opt2.btn": "Create sections",
+  "ma.opt3.name": "Split into files",
+  "ma.opt3.desc": "Rename this note to <space>.<tab1> and create an empty note per further tab.",
+  "ma.opt3.btn": "Split files",
+  "ma.pickTab": "Pick a tab (label or number)…",
+
   // Notices
   "notice.herdrOk": "Herdr OK: v{version} (protocol {protocol})",
   "notice.herdrUnreachable": "Herdr unreachable: {error}",
@@ -67,9 +82,11 @@ const en: Dict = {
   "notice.continuousPaused": "Continuous mode paused (timeout / no work start): \"{name}\"",
   "notice.notInFolder": "\"{name}\" is not in the Herdr folder (\"{folder}\").",
   "notice.allDoneNothing": "All to-dos done -- nothing to send.",
+  "notice.sectionAllDone": "This section has no open to-do.",
   "notice.allDoneContinuous": "All to-dos done -- continuous mode finished: \"{name}\"",
   "notice.noWorkspace": "No Herdr workspace found for \"{name}\". Available: {available}",
   "notice.noPane": "Workspace \"{label}\" has no agent/pane.",
+  "notice.tabNotFound": "Workspace \"{label}\" has no tab \"{tab}\".",
   "notice.sentContinuous": "-> {label}: \"{text}\" [continuous]",
   "notice.sentTracking": "-> {label}: \"{text}\" (checked off when done)",
   "notice.sent": "-> {label}: \"{text}\"",
@@ -78,6 +95,10 @@ const en: Dict = {
   "notice.noWorkStart": "Auto-check: work start for \"{text}\" not detected.",
   "notice.idleTimeout": "Auto-check: timeout while waiting for \"{text}\".",
   "notice.checked": "Checked off: \"{text}\"",
+  "notice.tabChosen": "This note now targets tab {label}.",
+  "notice.splitDone": "Split into {count} tab notes: \"{name}\"",
+  "notice.sectionsDone": "Added {count} sections to \"{name}\".",
+  "notice.singleAgent": "Workspace \"{label}\" has fewer than two agent tabs.",
   "notice.noteCreated": "Note for space \"{label}\" created: {name}",
   "notice.noteOpened": "Opened: {name}",
   "notice.noteCreateFailed": "Could not create note: {error}",
@@ -119,6 +140,7 @@ const de: Dict = {
   "cmd.sendNext": "Nächstes offenes To-Do an den Agent senden",
   "cmd.startContinuous": "Kontinuierlichen Modus für diese Notiz starten",
   "cmd.stopContinuous": "Kontinuierlichen Modus stoppen",
+  "cmd.configureMulti": "Multi-Agent-Handhabung für diese Notiz festlegen",
   "cmd.ping": "Verbindung zu Herdr testen (ping)",
 
   // Statusleiste
@@ -139,6 +161,20 @@ const de: Dict = {
   "status.blocked": "blocked",
   "status.none": "kein Agent",
 
+  // Multi-Agent-Auswahl
+  "ma.title": "Mehrere Agents in \"{name}\"",
+  "ma.intro": "Der Space \"{name}\" hat {count} Agent-Tabs. Wie soll diese Notiz sie ansteuern?",
+  "ma.opt1.name": "An einen Tab senden",
+  "ma.opt1.desc": "Einen Tab wählen; die Notiz zielt immer darauf (gespeichert als herdr-tab).",
+  "ma.opt1.btn": "Tab wählen…",
+  "ma.opt2.name": "Sektionen in dieser Notiz",
+  "ma.opt2.desc": "Je Tab eine Überschrift; To-Dos darunter gehen an den jeweiligen Tab. Bestehende To-Dos wandern unter die erste Sektion.",
+  "ma.opt2.btn": "Sektionen anlegen",
+  "ma.opt3.name": "In Dateien aufteilen",
+  "ma.opt3.desc": "Diese Notiz zu <space>.<tab1> umbenennen und je weiterem Tab eine leere Notiz anlegen.",
+  "ma.opt3.btn": "Dateien aufteilen",
+  "ma.pickTab": "Tab wählen (Label oder Nummer)…",
+
   // Hinweise
   "notice.herdrOk": "Herdr OK: v{version} (Protokoll {protocol})",
   "notice.herdrUnreachable": "Herdr nicht erreichbar: {error}",
@@ -152,9 +188,11 @@ const de: Dict = {
   "notice.continuousPaused": "Kontinuierlicher Modus angehalten (Timeout/kein Arbeitsbeginn): \"{name}\"",
   "notice.notInFolder": "\"{name}\" liegt nicht im Herdr-Ordner (\"{folder}\").",
   "notice.allDoneNothing": "Alle To-Dos erledigt -- nichts zu senden.",
+  "notice.sectionAllDone": "Diese Sektion hat kein offenes To-Do.",
   "notice.allDoneContinuous": "Alle To-Dos erledigt -- kontinuierlicher Modus beendet: \"{name}\"",
   "notice.noWorkspace": "Kein Herdr-Workspace für \"{name}\" gefunden. Verfügbar: {available}",
   "notice.noPane": "Workspace \"{label}\" hat keinen Agent/Pane.",
+  "notice.tabNotFound": "Workspace \"{label}\" hat keinen Tab \"{tab}\".",
   "notice.sentContinuous": "-> {label}: \"{text}\" [kontinuierlich]",
   "notice.sentTracking": "-> {label}: \"{text}\" (wird abgehakt, wenn fertig)",
   "notice.sent": "-> {label}: \"{text}\"",
@@ -163,6 +201,10 @@ const de: Dict = {
   "notice.noWorkStart": "Auto-Abhaken: Arbeitsbeginn für \"{text}\" nicht erkannt.",
   "notice.idleTimeout": "Auto-Abhaken: Timeout beim Warten auf \"{text}\".",
   "notice.checked": "Abgehakt: \"{text}\"",
+  "notice.tabChosen": "Diese Notiz zielt jetzt auf Tab {label}.",
+  "notice.splitDone": "In {count} Tab-Notizen aufgeteilt: \"{name}\"",
+  "notice.sectionsDone": "{count} Sektionen zu \"{name}\" hinzugefügt.",
+  "notice.singleAgent": "Workspace \"{label}\" hat weniger als zwei Agent-Tabs.",
   "notice.noteCreated": "Notiz für Space \"{label}\" angelegt: {name}",
   "notice.noteOpened": "Geöffnet: {name}",
   "notice.noteCreateFailed": "Notiz konnte nicht angelegt werden: {error}",
